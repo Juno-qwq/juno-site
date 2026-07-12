@@ -1,0 +1,67 @@
+/**
+ * tokens.css — the CANONICAL design-token source for Juno's Digital Garden (DESIGN.md §8).
+ * The Quartz garden (juno-garden/quartz/styles/custom.scss + quartz.config.ts) mirrors
+ * these values. Both palettes are sampled from design/dashboard_{light,dark}.png.
+ *
+ * Light = periwinkle/lavender wash, white glass, soft gold + periwinkle-blue accents.
+ * Dark  = deep navy, dark glass, neon cyan + violet accents.
+ *
+ * Dark mode is selected by [data-theme="dark"] on <html>.
+ */
+
+:root {
+  /* Surfaces */
+  --bg: #cfd6f0; /* periwinkle base (backdrop image sits above this) */
+  --bg-scrim: rgba(233, 236, 250, 0.35); /* readability scrim over the backdrop */
+  --card: rgba(255, 255, 255, 0.55); /* white glass */
+  --card-border: rgba(255, 255, 255, 0.7);
+  --card-strong: rgba(255, 255, 255, 0.72);
+
+  /* Text */
+  --text: #33415c; /* deep blue-gray */
+  --text-muted: #6b7a99;
+  --heading: #26314f;
+
+  /* Accents */
+  --accent: #d3a24a; /* soft gold / peach (warm highlight, glow) */
+  --accent-2: #6f86d6; /* periwinkle blue (links, interactive) */
+  --accent-contrast: #ffffff;
+
+  /* Effects */
+  --glow: rgba(211, 162, 74, 0.22); /* warm gold halo */
+  --ring: rgba(111, 134, 214, 0.5);
+  --shadow-card: 0 8px 30px rgba(38, 49, 79, 0.14);
+  --radius-card: 18px;
+
+  /* Data-viz / progress */
+  --track: rgba(111, 134, 214, 0.18);
+  --track-fill: linear-gradient(90deg, #6f86d6, #d3a24a);
+}
+
+:root[data-theme="dark"] {
+  /* Surfaces */
+  --bg: #0a0e1a; /* deep navy */
+  --bg-scrim: rgba(7, 11, 22, 0.45);
+  --card: rgba(18, 24, 42, 0.46); /* dark glass */
+  --card-border: rgba(96, 132, 156, 0.22);
+  --card-strong: rgba(18, 24, 42, 0.66);
+
+  /* Text */
+  --text: #c7d3e6; /* ice */
+  --text-muted: #7c8aa8;
+  --heading: #eaf2ff;
+
+  /* Accents */
+  --accent: #2dd4bf; /* neon cyan */
+  --accent-2: #b483f0; /* violet / magenta */
+  --accent-contrast: #06121a;
+
+  /* Effects */
+  --glow: rgba(45, 212, 191, 0.2); /* cyan halo */
+  --ring: rgba(45, 212, 191, 0.5);
+  --shadow-card: 0 10px 34px rgba(0, 0, 0, 0.45);
+
+  /* Data-viz / progress */
+  --track: rgba(124, 138, 168, 0.22);
+  --track-fill: linear-gradient(90deg, #2dd4bf, #b483f0);
+}
