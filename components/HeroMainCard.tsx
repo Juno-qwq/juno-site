@@ -1,33 +1,21 @@
 "use client"
 
 import Link from "next/link"
-import { useTheme } from "./ThemeProvider"
 import { HeroParallax, type HeroLayer } from "./HeroParallax"
 
-// Light: sky+water (far) / moon-ring (mid, rotating) / city+lamppost (near).
-// Dark:  void (far) / orbital rings (mid, rotating) / wireframe globe (near).
-const CONFIG = {
-  light: {
-    layers: [
-      { src: "/hero/light/layer_0.png", depth: 0.16 },
-      { src: "/hero/light/layer_1.png", depth: 0.45, rotate: true },
-      { src: "/hero/light/layer_2.png", depth: 0.95 },
-    ] as HeroLayer[],
-    sparkle: { count: 42, color: "#e0b45f", speed: 0.5 }, // warm gold
-    poster: "/hero/poster_light.png",
-    scrim: "bg-gradient-to-r from-white/75 via-white/35 to-transparent",
-  },
-  dark: {
-    layers: [
-      { src: "/hero/dark/layer_0.png", depth: 0.16 },
-      { src: "/hero/dark/layer_1.png", depth: 0.45, rotate: true },
-      { src: "/hero/dark/layer_2.png", depth: 0.95 },
-    ] as HeroLayer[],
-    sparkle: { count: 56, color: ["#2dd4bf", "#b483f0"], speed: 0.6 }, // cyan/violet
-    poster: "/hero/poster_dark.png",
-    scrim: "bg-gradient-to-r from-[#0a0e1a]/85 via-[#0a0e1a]/45 to-transparent",
-  },
-} as const
+// Theme swapping is entirely CSS-driven (image sources come from CSS variables in
+// tokens.css that flip on [data-theme], which the pre-hydration script sets before first
+// paint). That means NO flash of the wrong-theme art on a dark refresh, and no dependency
+// on React theme state here.
+const LAYERS: HeroLayer[] = [
+  { src: "var(--hero-layer-0)", depth: 0.16 }, // sky+water / void (far)
+  { src: "var(--hero-layer-1)", depth: 0.45, rotate: true }, // moon-ring / orbital rings (mid)
+  { src: "var(--hero-layer-2)", depth: 0.95 }, // city+lamppost / wireframe globe (near)
+]
+
+// SparkleCanvas reads its actual colors from --sparkle-a/--sparkle-b (theme-swapped); the
+// `color` prop is only a fallback if those vars are missing.
+const SPARKLE = { count: 50, color: ["#e0b45f", "#d3a24a"], speed: 0.55 } as const
 
 const PILLS = ["Next.js", "React", "TypeScript", "Tailwind", "Motion"]
 const STATS = [
@@ -38,15 +26,12 @@ const STATS = [
 ]
 
 export function HeroMainCard() {
-  const { theme } = useTheme()
-  const cfg = CONFIG[theme]
-
   return (
     <HeroParallax
-      layers={cfg.layers}
-      sparkle={cfg.sparkle}
-      poster={cfg.poster}
-      scrimClassName={cfg.scrim}
+      layers={LAYERS}
+      sparkle={SPARKLE}
+      poster="var(--hero-poster)"
+      scrimClassName="hero-scrim"
       className="min-h-[460px] border border-card-border shadow-glass md:min-h-[520px]"
     >
       <div className="px-7 py-9 md:px-12 md:py-12">

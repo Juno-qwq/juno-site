@@ -49,14 +49,15 @@
     position: fixed;
     inset: 0;
     z-index: -2;
-    background-image: url("/img/background_light.png");
+    /* Fixed to the viewport (not the document) so it always maps to the current browser
+       size and re-covers responsively on resize. `cover` + center scales the image to fill
+       whatever aspect ratio the window is, with no letterboxing. NOTE: do NOT re-add
+       `background-attachment: fixed` — on a position:fixed element it double-fixes and makes
+       several browsers zoom/crop the image inconsistently. */
+    background-image: var(--backdrop-image);
     background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-  }
-
-  :root[data-theme="dark"] .site-backdrop {
-    background-image: url("/img/background_dark.png");
+    background-position: center center;
+    background-repeat: no-repeat;
   }
 
   .site-backdrop::after {
@@ -64,6 +65,11 @@
     position: absolute;
     inset: 0;
     background: var(--bg-scrim);
+  }
+
+  /* Theme-aware contrast scrim over the hero art (CSS-driven, so it swaps pre-paint). */
+  .hero-scrim {
+    background: var(--hero-scrim);
   }
 
   /* Gradient display text used by the hero ("Good Morning") and section titles. */

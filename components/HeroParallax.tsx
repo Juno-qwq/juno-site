@@ -26,6 +26,11 @@ type HeroParallaxProps = {
 const MOUSE_MAX = 26 // px of pointer parallax at depth = 1
 const EASE = 0.06 // pointer smoothing per frame
 
+// Accepts a plain path, a full url()/gradient, or a CSS variable — so callers can pass
+// `var(--hero-layer-0)` for pre-paint, flash-free theme swapping.
+const asImage = (v: string) =>
+  /^(var|url|linear-gradient|radial-gradient|image-set)\(/.test(v.trim()) ? v : `url("${v}")`
+
 /**
  * The animated Main Card (Phase 4): depth-layered art with idle drift + spring-eased mouse
  * parallax, a very slow rotation on flagged layers, and a SparkleCanvas overlay. All motion
@@ -92,8 +97,11 @@ export function HeroParallax({
   if (reduced) {
     return (
       <div className={`relative overflow-hidden rounded-card ${className}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={poster} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+        <div
+          className="absolute inset-0"
+          style={{ backgroundImage: asImage(poster), backgroundSize: "cover", backgroundPosition: "center" }}
+          aria-hidden="true"
+        />
         <div className={`absolute inset-0 ${scrimClassName}`} aria-hidden="true" />
         <div className="relative">{children}</div>
       </div>
@@ -112,7 +120,7 @@ export function HeroParallax({
             className="absolute will-change-transform"
             style={{
               inset: "-6%",
-              backgroundImage: `url(${layer.src})`,
+              backgroundImage: asImage(layer.src),
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}

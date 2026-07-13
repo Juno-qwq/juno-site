@@ -36,6 +36,25 @@
   /* Data-viz / progress */
   --track: rgba(111, 134, 214, 0.18);
   --track-fill: linear-gradient(90deg, #6f86d6, #d3a24a);
+
+  /* Full-page backdrop image (swapped by theme; keeps the fixed div responsive). */
+  --backdrop-image: url("/img/background_light.png");
+
+  /* Hero Main Card art — CSS-driven so it swaps pre-paint with no flash (light set). */
+  --hero-layer-0: url("/hero/light/layer_0.png");
+  --hero-layer-1: url("/hero/light/layer_1.png");
+  --hero-layer-2: url("/hero/light/layer_2.png");
+  --hero-poster: url("/hero/poster_light.png");
+  --hero-scrim: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.75),
+    rgba(255, 255, 255, 0.35) 45%,
+    transparent 80%
+  );
+
+  /* Sparkle particle palette (read by SparkleCanvas via getComputedStyle). */
+  --sparkle-a: #e0b45f;
+  --sparkle-b: #d3a24a;
 }
 
 :root[data-theme="dark"] {
@@ -64,4 +83,23 @@
   /* Data-viz / progress */
   --track: rgba(124, 138, 168, 0.22);
   --track-fill: linear-gradient(90deg, #2dd4bf, #b483f0);
+
+  /* Full-page backdrop image (dark). */
+  --backdrop-image: url("/img/background_dark.png");
+
+  /* Hero Main Card art — dark set (void / orbital rings / wireframe globe). */
+  --hero-layer-0: url("/hero/dark/layer_0.png");
+  --hero-layer-1: url("/hero/dark/layer_1.png");
+  --hero-layer-2: url("/hero/dark/layer_2.png");
+  --hero-poster: url("/hero/poster_dark.png");
+  --hero-scrim: linear-gradient(
+    to right,
+    rgba(10, 14, 26, 0.85),
+    rgba(10, 14, 26, 0.45) 45%,
+    transparent 80%
+  );
+
+  /* Sparkle particle palette (cyan / violet). */
+  --sparkle-a: #2dd4bf;
+  --sparkle-b: #b483f0;
 }

@@ -40,7 +40,17 @@ export function SparkleCanvas({ count, color, speed, className = "" }: SparkleCa
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    const colors = Array.isArray(color) ? color : [color]
+    // Prefer theme-swapped CSS variables (so the palette is correct on the very first paint,
+    // even before React theme state settles — no flash); fall back to the `color` prop.
+    const fallback = Array.isArray(color) ? [...color] : [color]
+    const readColors = (): string[] => {
+      const cs = getComputedStyle(canvas)
+      const fromVars = [cs.getPropertyValue("--sparkle-a"), cs.getPropertyValue("--sparkle-b")]
+        .map((c) => c.trim())
+        .filter(Boolean)
+      return fromVars.length ? fromVars : fallback
+    }
+    let colors = readColors()
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     let w = 0
     let h = 0
@@ -112,6 +122,17 @@ export function SparkleCanvas({ count, color, speed, className = "" }: SparkleCa
       threshold: 0,
     })
     io.observe(canvas)
+
+    // Re-tint existing particles when the theme flips (colors come from CSS vars).
+    const themeObserver = new MutationObserver(() => {
+      colors = readColors()
+      for (const p of parts) p.c = colors[Math.floor(Math.random() * colors.length)]
+    })
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    })
+
     const onResize = () => {
       resize()
       seed()
@@ -121,6 +142,7 @@ export function SparkleCanvas({ count, color, speed, className = "" }: SparkleCa
     return () => {
       cancelAnimationFrame(raf)
       io.disconnect()
+      themeObserver.disconnect()
       window.removeEventListener("resize", onResize)
     }
   }, [count, color, speed, reduced])
