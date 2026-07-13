@@ -3,14 +3,55 @@
 import Link from "next/link"
 import { HeroParallax, type HeroLayer } from "./HeroParallax"
 
-// Theme swapping is entirely CSS-driven (image sources come from CSS variables in
-// tokens.css that flip on [data-theme], which the pre-hydration script sets before first
-// paint). That means NO flash of the wrong-theme art on a dark refresh, and no dependency
-// on React theme state here.
+// Both theme layer sets are rendered and gated by CSS on [data-theme] (set pre-paint), so
+// the correct art shows on the first frame — no flash on a dark refresh — while allowing
+// per-theme behavior (light halo twinkles; dark orb/orbit live on the right).
+//
+// Dark orb + orbit share this box: a square anchored to the right of the card, so the orbit
+// (transform-origin: center) spins around the orb's center. Same depth + phase keeps them
+// locked together as they drift.
+const ORB_BOX: React.CSSProperties = {
+  top: "50%",
+  right: "2%",
+  left: "auto",
+  bottom: "auto",
+  // A square a bit taller than the card (overflow clipped) so the orb/orbit read large;
+  // `cover` scales the centered art up to fill it. Tune size via `height`, position via
+  // `right`, zoom via `backgroundSize`.
+  height: "128%",
+  width: "auto",
+  aspectRatio: "1 / 1",
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+  transformOrigin: "center center",
+}
+const ORB_DEPTH = 0.8
+const ORB_PHASE = 2.0
+
 const LAYERS: HeroLayer[] = [
-  { src: "var(--hero-layer-0)", depth: 0.16 }, // sky+water / void (far)
-  { src: "var(--hero-layer-1)", depth: 0.45, rotate: true }, // moon-ring / orbital rings (mid)
-  { src: "var(--hero-layer-2)", depth: 0.95 }, // city+lamppost / wireframe globe (near)
+  // Dark: void (far) / orbit (spins around orb, right) / orb (drifts, right).
+  { src: "/hero/dark/layer_0.png", depth: 0.16, theme: "dark", phase: 0 },
+  {
+    src: "/hero/dark/layer_1.png",
+    depth: ORB_DEPTH,
+    theme: "dark",
+    rotate: true,
+    box: ORB_BOX,
+    baseTransform: "translateY(-50%)",
+    phase: ORB_PHASE,
+  },
+  {
+    src: "/hero/dark/layer_2.png",
+    depth: ORB_DEPTH,
+    theme: "dark",
+    box: ORB_BOX,
+    baseTransform: "translateY(-50%)",
+    phase: ORB_PHASE,
+  },
+  // Light: sky+water (far) / halo (twinkles) / city+lamppost (near).
+  { src: "/hero/light/layer_0.png", depth: 0.16, theme: "light", phase: 0 },
+  { src: "/hero/light/layer_1.png", depth: 0.45, theme: "light", twinkle: true, phase: 1.2 },
+  { src: "/hero/light/layer_2.png", depth: 0.95, theme: "light", phase: 2.4 },
 ]
 
 // SparkleCanvas reads its actual colors from --sparkle-a/--sparkle-b (theme-swapped); the

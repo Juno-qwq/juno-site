@@ -80,3 +80,17 @@
     color: transparent;
   }
 }
+
+/* Hero layer theme gating — kept OUTSIDE @layer components on purpose: the class names are
+   built dynamically (`hero-layer--${theme}`) so Tailwind's content scanner can't see them
+   and would purge them from a @layer. Plain CSS here is always emitted. Both theme sets
+   render; only the active theme's is shown (data-theme is set pre-paint → no flash). */
+.hero-layer--dark {
+  display: none;
+}
+:root[data-theme="dark"] .hero-layer--light {
+  display: none;
+}
+:root[data-theme="dark"] .hero-layer--dark {
+  display: block;
+}
