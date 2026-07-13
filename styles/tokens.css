@@ -40,6 +40,7 @@
   /* Full-page backdrop + foreground overlay images (swapped by theme). */
   --backdrop-image: url("/img/background_light.png");
   --overlay-image: url("/img/foreground_overlay_light.png");
+  --avatar-image: url("/img/profile_head_light.png");
 
   /* Hero Main Card art — CSS-driven so it swaps pre-paint with no flash (light set). */
   --hero-layer-0: url("/hero/light/layer_0.png");
@@ -88,6 +89,7 @@
   /* Full-page backdrop + foreground overlay images (dark). */
   --backdrop-image: url("/img/background_dark.png");
   --overlay-image: url("/img/foreground_overlay_dark.png");
+  --avatar-image: url("/img/profile_head_dark.png");
 
   /* Hero Main Card art — dark set (void / orbital rings / wireframe globe). */
   --hero-layer-0: url("/hero/dark/layer_0.png");

@@ -133,3 +133,34 @@
 :root[data-theme="dark"] .site-halo {
   display: none;
 }
+
+/* Now Playing equalizer bars (dynamic per-bar animation-delay set inline). */
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.eq-bar {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transform-origin: bottom;
+  animation-name: eq;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+.eq-bar.eq-paused {
+  animation-play-state: paused;
+  transform: scaleY(0.3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .eq-bar {
+    animation: none;
+    transform: scaleY(0.5);
+  }
+}
