@@ -27,18 +27,8 @@ const ORB_BOX: React.CSSProperties = {
 }
 const ORB_DEPTH = 0.8
 const ORB_PHASE = 2.0
-// Shared spin speed for the dark orbit + light halo (deg/s). Bumped up from the old 1.2.
+// Spin speed for the dark orbit (deg/s). Bumped up from the old 1.2.
 const ORBIT_SPEED = 5
-
-// The light halo ring sits on the right of its image; keep the layer full-bleed but pivot
-// rotation on the ring's center so it spins in place (not around the card center). Tune the
-// origin if the ring drifts as it spins.
-const HALO_BOX: React.CSSProperties = {
-  inset: "-6%",
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  transformOrigin: "68% 46%",
-}
 
 const LAYERS: HeroLayer[] = [
   // Dark: void (far) / orbit (spins around orb, right) / orb (drifts, right).
@@ -63,15 +53,7 @@ const LAYERS: HeroLayer[] = [
   },
   // Light: sky+water (far) / halo (twinkles) / city+lamppost (near).
   { src: "/hero/light/layer_0.png", depth: 0.16, theme: "light", phase: 0 },
-  {
-    src: "/hero/light/layer_1.png",
-    depth: 0.45,
-    theme: "light",
-    rotate: true,
-    rotateSpeed: ORBIT_SPEED,
-    box: HALO_BOX,
-    phase: 1.2,
-  },
+  { src: "/hero/light/layer_1.png", depth: 0.45, theme: "light", twinkle: true, phase: 1.2 },
   { src: "/hero/light/layer_2.png", depth: 0.95, theme: "light", phase: 2.4 },
 ]
 

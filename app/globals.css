@@ -71,12 +71,17 @@
     position: fixed;
     inset: 0;
     z-index: -2;
-    background-image: var(--overlay-image);
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
     pointer-events: none;
     will-change: transform;
+  }
+  .site-overlay--light {
+    background-image: url("/img/foreground_overlay_light.png");
+  }
+  .site-overlay--dark {
+    background-image: url("/img/foreground_overlay_dark.png");
   }
 
   .site-sparkles {
@@ -113,5 +118,16 @@
   display: none;
 }
 :root[data-theme="dark"] .hero-layer--dark {
+  display: block;
+}
+
+/* Same theme gating for the two page overlays (light halo spins / dark nebula drifts). */
+.site-overlay--dark {
+  display: none;
+}
+:root[data-theme="dark"] .site-overlay--light {
+  display: none;
+}
+:root[data-theme="dark"] .site-overlay--dark {
   display: block;
 }
