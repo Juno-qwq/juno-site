@@ -12,16 +12,16 @@ const HALO_SPIN = 3 // deg/s for the light-mode page halo
 const EASE = 0.05
 
 /**
- * The ambient background for every page. Layers (behind content): a STATIC backdrop image,
- * a page-wide twinkling starfield, and a theme-specific foreground overlay — the dark overlay
- * (nebula/HUD) gently drifts, while the light overlay (a halo ring) slowly spins. Both overlay
- * layers render and are gated by CSS `data-theme`. Under `prefers-reduced-motion` the overlays
- * are static and the sparkles don't render.
+ * The ambient background for every page. Layers (behind content): a STATIC backdrop image, a
+ * theme-swapped foreground overlay (nebula/clouds) that gently drifts with subtle pointer
+ * parallax, a light-mode-only halo ring that slowly spins, and a page-wide twinkling
+ * starfield. Theme images/sparkle colors come from CSS variables (swapped pre-paint). Under
+ * `prefers-reduced-motion` the overlay/halo are static and the sparkles don't render.
  */
 export function SiteBackdrop() {
   const reduced = useReducedMotion()
-  const lightRef = useRef<HTMLDivElement>(null)
-  const darkRef = useRef<HTMLDivElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const haloRef = useRef<HTMLDivElement>(null)
   const target = useRef({ x: 0, y: 0 })
   const current = useRef({ x: 0, y: 0 })
 
@@ -42,27 +42,27 @@ export function SiteBackdrop() {
     current.current.y += (target.current.y - current.current.y) * EASE
     const time = t / 1000
 
-    // Dark overlay: gentle drift + pointer parallax (opposite direction for depth).
-    if (darkRef.current) {
+    // Overlay: gentle drift + pointer parallax (opposite direction for depth).
+    if (overlayRef.current) {
       const dx = Math.sin(time * 0.16 + 1.5) * 9 - current.current.x * OVERLAY_MOUSE_MAX
       const dy = Math.cos(time * 0.13 + 1.5) * 7 - current.current.y * OVERLAY_MOUSE_MAX
-      darkRef.current.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(1.08)`
+      overlayRef.current.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(1.08)`
     }
-    // Light overlay (halo ring): slow spin around center + a touch of pointer parallax.
-    if (lightRef.current) {
+    // Halo (light mode): slow spin around center + a touch of pointer parallax.
+    if (haloRef.current) {
       const rot = (time * HALO_SPIN) % 360
       const dx = -current.current.x * HALO_MOUSE_MAX
       const dy = -current.current.y * HALO_MOUSE_MAX
-      lightRef.current.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) rotate(${rot.toFixed(2)}deg)`
+      haloRef.current.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) rotate(${rot.toFixed(2)}deg)`
     }
   })
 
   return (
     <>
       <div className="site-backdrop" aria-hidden="true" />
+      <div ref={overlayRef} className="site-overlay" aria-hidden="true" />
+      <div ref={haloRef} className="site-halo" aria-hidden="true" />
       <SparkleCanvas count={64} color={["#e0b45f", "#d3a24a"]} speed={0.35} className="site-sparkles" />
-      <div ref={lightRef} className="site-overlay site-overlay--light" aria-hidden="true" />
-      <div ref={darkRef} className="site-overlay site-overlay--dark" aria-hidden="true" />
     </>
   )
 }

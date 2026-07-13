@@ -52,7 +52,7 @@
   .site-backdrop {
     position: fixed;
     inset: 0;
-    z-index: -3;
+    z-index: -4;
     /* Static (no transform) so cover shows the full image without motion-cropping the sides. */
     background-image: var(--backdrop-image);
     background-size: cover;
@@ -67,21 +67,29 @@
     background: var(--bg-scrim);
   }
 
+  /* Foreground overlay (theme-swapped nebula/clouds) — drifts + subtle mouse parallax. */
   .site-overlay {
     position: fixed;
     inset: 0;
-    z-index: -2;
+    z-index: -3;
+    background-image: var(--overlay-image);
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
     pointer-events: none;
     will-change: transform;
   }
-  .site-overlay--light {
-    background-image: url("/img/foreground_overlay_light.png");
-  }
-  .site-overlay--dark {
-    background-image: url("/img/foreground_overlay_dark.png");
+  /* Spinning halo ring — light mode only (hidden in dark, see gating below). */
+  .site-halo {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-image: url("/img/foreground_halo_light.png");
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    will-change: transform;
   }
 
   .site-sparkles {
@@ -121,13 +129,7 @@
   display: block;
 }
 
-/* Same theme gating for the two page overlays (light halo spins / dark nebula drifts). */
-.site-overlay--dark {
+/* The spinning halo is a light-mode-only layer. */
+:root[data-theme="dark"] .site-halo {
   display: none;
-}
-:root[data-theme="dark"] .site-overlay--light {
-  display: none;
-}
-:root[data-theme="dark"] .site-overlay--dark {
-  display: block;
 }
