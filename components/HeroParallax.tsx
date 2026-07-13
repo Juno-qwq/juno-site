@@ -151,7 +151,12 @@ export function HeroParallax({
           />
         ))}
       </div>
-      <SparkleCanvas count={sparkle.count} color={sparkle.color} speed={sparkle.speed} />
+      <SparkleCanvas
+        count={sparkle.count}
+        color={sparkle.color}
+        speed={sparkle.speed}
+        className="pointer-events-none absolute inset-0 h-full w-full"
+      />
       <div className={`absolute inset-0 ${scrimClassName}`} aria-hidden="true" />
       <div className="relative">{children}</div>
     </div>

@@ -17,9 +17,9 @@ export function SiteHeader() {
     <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
       <Link href="/" className="group flex items-baseline gap-2">
         <span className="font-display text-2xl font-bold tracking-wide text-heading">JUNO</span>
-        <span className="text-xs uppercase tracking-[0.2em] text-text-muted">Digital Garden</span>
+        <span className="text-xs font-medium uppercase tracking-[0.2em] text-text">Digital Garden</span>
       </Link>
-      <nav className="hidden items-center gap-5 text-sm text-text-muted md:flex">
+      <nav className="hidden items-center gap-5 text-sm font-medium text-text md:flex">
         {NAV.map((item) => (
           <Link key={item.href} href={item.href} className="transition-colors hover:text-accent-2">
             {item.label}

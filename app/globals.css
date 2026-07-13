@@ -45,19 +45,19 @@
 @layer components {
   /* Full-page fixed backdrop behind the grid (DESIGN.md §3/§9), theme-swapped, with a
      scrim that keeps AA contrast over the art. */
+  /* Ambient background stack (behind content): backdrop → sparkles → overlay. Each fixed to
+     the viewport so it re-covers responsively; SiteBackdrop drives their gentle drift +
+     subtle mouse parallax via transforms. NOTE: do NOT use `background-attachment: fixed`
+     on these position:fixed layers — it double-fixes and crops inconsistently. */
   .site-backdrop {
     position: fixed;
     inset: 0;
-    z-index: -2;
-    /* Fixed to the viewport (not the document) so it always maps to the current browser
-       size and re-covers responsively on resize. `cover` + center scales the image to fill
-       whatever aspect ratio the window is, with no letterboxing. NOTE: do NOT re-add
-       `background-attachment: fixed` — on a position:fixed element it double-fixes and makes
-       several browsers zoom/crop the image inconsistently. */
+    z-index: -3;
     background-image: var(--backdrop-image);
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
+    will-change: transform;
   }
 
   .site-backdrop::after {
@@ -65,6 +65,27 @@
     position: absolute;
     inset: 0;
     background: var(--bg-scrim);
+  }
+
+  .site-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-image: var(--overlay-image);
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .site-sparkles {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
   }
 
   /* Theme-aware contrast scrim over the hero art (CSS-driven, so it swaps pre-paint). */

@@ -148,12 +148,8 @@ export function SparkleCanvas({ count, color, speed, className = "" }: SparkleCa
   }, [count, color, speed, reduced])
 
   if (reduced) return null
-  return (
-    <canvas
-      ref={canvasRef}
-      className={className}
-      aria-hidden="true"
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
-    />
-  )
+  // Position/size come from className so the same canvas works inside the hero (absolute
+  // fill) and page-wide (fixed fill).
+  return <canvas ref={canvasRef} className={className} aria-hidden="true" style={{ pointerEvents: "none" }} />
+
 }

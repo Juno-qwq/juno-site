@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import localFont from "next/font/local"
 import "./globals.css"
+import { SiteBackdrop } from "@/components/SiteBackdrop"
 import { ThemeProvider } from "@/components/ThemeProvider"
 
 // Self-hosted display serif + body sans (DESIGN.md §8), exposed as CSS variables.
@@ -40,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <div className="site-backdrop" aria-hidden="true" />
+        <SiteBackdrop />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

@@ -37,8 +37,9 @@
   --track: rgba(111, 134, 214, 0.18);
   --track-fill: linear-gradient(90deg, #6f86d6, #d3a24a);
 
-  /* Full-page backdrop image (swapped by theme; keeps the fixed div responsive). */
+  /* Full-page backdrop + foreground overlay images (swapped by theme). */
   --backdrop-image: url("/img/background_light.png");
+  --overlay-image: url("/img/foreground_overlay_light.png");
 
   /* Hero Main Card art — CSS-driven so it swaps pre-paint with no flash (light set). */
   --hero-layer-0: url("/hero/light/layer_0.png");
@@ -84,8 +85,9 @@
   --track: rgba(124, 138, 168, 0.22);
   --track-fill: linear-gradient(90deg, #2dd4bf, #b483f0);
 
-  /* Full-page backdrop image (dark). */
+  /* Full-page backdrop + foreground overlay images (dark). */
   --backdrop-image: url("/img/background_dark.png");
+  --overlay-image: url("/img/foreground_overlay_dark.png");
 
   /* Hero Main Card art — dark set (void / orbital rings / wireframe globe). */
   --hero-layer-0: url("/hero/dark/layer_0.png");
