@@ -8,8 +8,10 @@ export type HeroLayer = {
   src: string
   /** 0 (far, least movement) → 1 (near, most movement). */
   depth: number
-  /** Very slow continuous rotation around the layer's transform-origin. */
+  /** Continuous rotation around the layer's transform-origin. */
   rotate?: boolean
+  /** Rotation speed in degrees/second (default 1.2 ≈ one turn every 5 min). */
+  rotateSpeed?: number
   /** Star-like opacity pulse (instead of/alongside drift). */
   twinkle?: boolean
   /** Only render for this theme (gated via CSS data-theme; flash-free). */
@@ -105,7 +107,7 @@ export function HeroParallax({
       const idleY = Math.cos(time * 0.38 + phase) * amp * 0.7
       const mx = current.current.x * depth * MOUSE_MAX
       const my = current.current.y * depth * MOUSE_MAX
-      const rot = layer.rotate ? (time * 1.2) % 360 : 0 // ~1.2°/s = full turn every 5 min
+      const rot = layer.rotate ? (time * (layer.rotateSpeed ?? 1.2)) % 360 : 0
       const scale = layer.rotate && !layer.box ? " scale(1.5)" : "" // cover corners on fill-mode spin
       const base = layer.baseTransform ? `${layer.baseTransform} ` : ""
       node.style.transform = `${base}translate3d(${(idleX + mx).toFixed(2)}px, ${(idleY + my).toFixed(2)}px, 0)${rot ? ` rotate(${rot.toFixed(2)}deg)` : ""}${scale}`

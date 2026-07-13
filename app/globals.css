@@ -53,11 +53,11 @@
     position: fixed;
     inset: 0;
     z-index: -3;
+    /* Static (no transform) so cover shows the full image without motion-cropping the sides. */
     background-image: var(--backdrop-image);
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
-    will-change: transform;
   }
 
   .site-backdrop::after {
