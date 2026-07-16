@@ -19,6 +19,7 @@ export function TopicsGraph() {
   const fgRef = useRef<any>(null)
   const [width, setWidth] = useState(0)
   const [hover, setHover] = useState<string | null>(null)
+  const [inView, setInView] = useState(false)
 
   useEffect(() => {
     const el = containerRef.current
@@ -26,6 +27,25 @@ export function TopicsGraph() {
     const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
     ro.observe(el)
     return () => ro.disconnect()
+  }, [])
+
+  // The force-graph chunk is the heaviest thing on the page and this card is below the
+  // fold, so don't pay for it until the reader is heading here. Once true it stays true —
+  // re-running the physics sim on every scroll-by would be worse than the download.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true)
+          io.disconnect()
+        }
+      },
+      { rootMargin: "200px" },
+    )
+    io.observe(el)
+    return () => io.disconnect()
   }, [])
 
   // Fresh copies — the force sim mutates node/link objects with x/y/vx/vy.
@@ -73,7 +93,7 @@ export function TopicsGraph() {
         className="mt-2 w-full"
         style={{ height: HEIGHT, cursor: hover ? "pointer" : "default" }}
       >
-        {width > 0 && (
+        {width > 0 && inView && (
           <ForceGraph2D
             ref={fgRef}
             width={width}
@@ -105,7 +125,23 @@ export function TopicsGraph() {
           />
         )}
       </div>
-      <p className="mt-1 text-[0.65rem] text-text-muted">Click a node to open its garden index.</p>
+      <p className="mt-1 text-[0.65rem] text-text-muted" id="topics-graph-hint">
+        Click a node to open its garden index.
+      </p>
+      {/*
+        The graph is a canvas: its nodes can't be tabbed to or announced. This list is the
+        keyboard/screen-reader equivalent of clicking a node — same destinations, same
+        order. Visually hidden, but focusable, so Tab still reaches every topic.
+      */}
+      <nav aria-label="Topics in my garden">
+        <ul className="sr-only">
+          {graphNodes.map((n) => (
+            <li key={n.id}>
+              <a href={n.garden}>{n.label}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </GlassCard>
   )
 }

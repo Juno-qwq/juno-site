@@ -45,14 +45,14 @@ export function FeaturedProjects() {
                     </span>
                   </div>
                   <div className="truncate text-xs text-text-muted">{p.subtitle}</div>
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2 flex items-center gap-3">
                     {p.repo && (
                       <a
                         href={p.repo}
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={`${p.name} repository`}
-                        className="text-text-muted transition-colors hover:text-accent-2"
+                        className="-m-1 inline-flex h-6 w-6 items-center justify-center text-text-muted transition-colors hover:text-accent-2"
                       >
                         <Github size={15} />
                       </a>
@@ -61,7 +61,7 @@ export function FeaturedProjects() {
                       <a
                         href={p.garden}
                         aria-label={`${p.name} notes`}
-                        className="text-text-muted transition-colors hover:text-accent-2"
+                        className="-m-1 inline-flex h-6 w-6 items-center justify-center text-text-muted transition-colors hover:text-accent-2"
                       >
                         <ArrowUpRight size={15} />
                       </a>

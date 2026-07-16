@@ -164,3 +164,156 @@
     transform: scaleY(0.5);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Rendered blog post bodies (.post-body)
+
+   The HTML comes from scripts/extract-blog.mjs, so these are plain element
+   selectors rather than utility classes — Tailwind never sees this markup.
+   Everything resolves through tokens.css, so both themes follow for free.
+   --------------------------------------------------------------------------- */
+.post-body {
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.post-body > * + * {
+  margin-top: 1.15em;
+}
+.post-body h2,
+.post-body h3,
+.post-body h4 {
+  color: var(--heading);
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 700;
+  line-height: 1.25;
+  scroll-margin-top: 5rem; /* heading anchors clear the sticky header */
+}
+.post-body h2 {
+  margin-top: 2em;
+  font-size: 1.6rem;
+}
+.post-body h3 {
+  margin-top: 1.6em;
+  font-size: 1.25rem;
+}
+.post-body h4 {
+  margin-top: 1.4em;
+  font-size: 1.05rem;
+}
+.post-body strong {
+  color: var(--heading);
+  font-weight: 650;
+}
+.post-body a {
+  color: var(--accent-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.post-body a:hover {
+  color: var(--accent);
+}
+.post-body ul,
+.post-body ol {
+  padding-left: 1.4em;
+}
+.post-body ul {
+  list-style: disc;
+}
+.post-body ol {
+  list-style: decimal;
+}
+.post-body li + li {
+  margin-top: 0.4em;
+}
+.post-body li::marker {
+  color: var(--accent-2);
+}
+.post-body blockquote {
+  border-left: 2px solid var(--accent);
+  padding: 0.25em 0 0.25em 1em;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.post-body hr {
+  border: 0;
+  border-top: 1px solid var(--card-border);
+}
+.post-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  border: 1px solid var(--card-border);
+}
+.post-body :not(pre) > code {
+  background: var(--track);
+  border: 1px solid var(--card-border);
+  border-radius: 0.35rem;
+  padding: 0.1em 0.35em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  color: var(--accent-2);
+}
+.post-body pre {
+  overflow-x: auto; /* long lines scroll inside the block, never the page */
+  background: var(--code-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 0.75rem;
+  padding: 1rem 1.1rem;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.post-body pre code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--text);
+}
+.post-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  display: block;
+  overflow-x: auto;
+}
+.post-body th,
+.post-body td {
+  border: 1px solid var(--card-border);
+  padding: 0.5em 0.7em;
+  text-align: left;
+}
+.post-body th {
+  color: var(--heading);
+  background: var(--track);
+}
+
+/* Syntax highlighting (rehype-highlight emits highlight.js class names). Tokens only,
+   so code blocks stay legible in both themes without a second stylesheet. */
+.post-body .hljs-comment,
+.post-body .hljs-quote {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.post-body .hljs-keyword,
+.post-body .hljs-selector-tag,
+.post-body .hljs-built_in {
+  color: var(--accent-2);
+}
+.post-body .hljs-string,
+.post-body .hljs-attr,
+.post-body .hljs-template-string {
+  color: var(--accent);
+}
+.post-body .hljs-number,
+.post-body .hljs-literal {
+  color: var(--accent);
+}
+.post-body .hljs-title,
+.post-body .hljs-function .hljs-title,
+.post-body .hljs-section {
+  color: var(--heading);
+  font-weight: 600;
+}
+.post-body .hljs-params,
+.post-body .hljs-variable {
+  color: var(--text);
+}

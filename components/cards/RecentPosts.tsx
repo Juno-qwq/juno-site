@@ -3,15 +3,13 @@
 import Link from "next/link"
 import { GlassCard } from "@/components/GlassCard"
 import { useTheme } from "@/components/ThemeProvider"
-import { recentPosts, resolveThumbnail } from "@/lib/posts"
+import { formatShortDate, resolveThumbnail, type Post } from "@/lib/posts"
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-function fmtDate(iso: string) {
-  const [, m, d] = iso.split("-")
-  return `${MONTHS[Number(m) - 1]} ${Number(d)}`
-}
-
-export function RecentPosts() {
+/**
+ * Posts arrive as props: the source is the vault, read at build time by the server page.
+ * This component stays a client component only because thumbnails are theme-swapped.
+ */
+export function RecentPosts({ posts }: { posts: Post[] }) {
   const { theme } = useTheme()
   return (
     <GlassCard className="p-5">
@@ -22,7 +20,8 @@ export function RecentPosts() {
         </Link>
       </div>
       <div className="mt-4 flex flex-col gap-3">
-        {recentPosts.map((p) => (
+        {posts.length === 0 && <p className="text-sm text-text-muted">No posts published yet.</p>}
+        {posts.map((p) => (
           <Link key={p.slug} href={`/blog/${p.slug}/`} className="group flex gap-3">
             <div
               className="h-14 w-14 shrink-0 rounded-lg border border-card-border bg-cover bg-center"
@@ -36,12 +35,12 @@ export function RecentPosts() {
                 {p.tags.map((t) => (
                   <span
                     key={t}
-                    className="rounded-full bg-[var(--track)] px-2 py-0.5 text-[0.65rem] text-text-muted"
+                    className="rounded-full bg-[var(--track)] px-2 py-0.5 text-[0.65rem] text-text"
                   >
                     {t}
                   </span>
                 ))}
-                <span className="ml-auto text-[0.65rem] text-text-muted">{fmtDate(p.date)}</span>
+                <span className="ml-auto text-[0.65rem] text-text-muted">{formatShortDate(p.date)}</span>
               </div>
             </div>
           </Link>

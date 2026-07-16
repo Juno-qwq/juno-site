@@ -10,18 +10,22 @@ import { RecentPosts } from "@/components/cards/RecentPosts"
 import { StayInLoop } from "@/components/cards/StayInLoop"
 import { SystemOverview } from "@/components/cards/SystemOverview"
 import { TopicsGraph } from "@/components/cards/TopicsGraph"
+import { getRecentPosts } from "@/lib/blog"
 
 export default function DashboardPage() {
+  // Same vault-backed source as /blog — top 3 by date.
+  const recent = getRecentPosts(3)
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <div className="min-w-0 flex-1 px-4 pb-6 pt-16 lg:px-8 lg:pt-6">
+      <main id="main-content" className="min-w-0 flex-1 px-4 pb-6 pt-16 lg:px-8 lg:pt-6">
         {/* Hero + main column, with the System/Calendar/NowPlaying rail on xl+. */}
         <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
           <div className="min-w-0 space-y-6">
             <HeroMainCard />
             <div className="grid gap-6 md:grid-cols-2">
-              <RecentPosts />
+              <RecentPosts posts={recent} />
               <CurrentlyLearning />
             </div>
             <FeaturedProjects />
@@ -41,7 +45,7 @@ export default function DashboardPage() {
         </div>
 
         <Footer />
-      </div>
+      </main>
     </div>
   )
 }

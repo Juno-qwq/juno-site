@@ -9,6 +9,11 @@ out/
 build/
 next-env.d.ts
 
+# Generated from the vault by scripts/extract-blog.mjs (prebuild). Never hand-edited, and
+# never committed — the vault is the only source of truth for posts, and this directory
+# would otherwise duplicate private-repo content into a public one.
+content/blog/
+
 # Cloudflare / wrangler
 .wrangler/
 .dev.vars

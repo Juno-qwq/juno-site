@@ -1,0 +1,119 @@
+# Unified build & deploy — the whole publishing pipeline lives here (DESIGN.md §7).
+#
+# Three repos, ONE static artifact, ONE Cloudflare Pages project:
+#   juno-site  → /          (Next.js static export)
+#   juno-garden→ /garden    (Quartz 4)
+#   juno-vault → the content for both (private; never deployed as-is)
+#
+# Same origin is the point: it is what lets one theme toggle govern both surfaces via a
+# shared localStorage key (DESIGN.md §8). Splitting this into two Pages projects would
+# break that, so the builds are deliberately joined.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  # juno-vault and juno-garden can't run this workflow directly (it lives here), so they
+  # ping it instead — see each repo's .github/workflows/dispatch.yml.
+  repository_dispatch:
+    types: [vault-updated, garden-updated]
+  workflow_dispatch:
+
+# A push to the vault and a push to the site can land seconds apart; deploying them out of
+# order would publish stale content. Never cancel in-progress: a half-finished deploy is
+# worse than a slightly delayed one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout juno-site
+        uses: actions/checkout@v4
+        with:
+          path: juno-site
+
+      - name: Checkout juno-garden
+        uses: actions/checkout@v4
+        with:
+          repository: Juno-qwq/juno-garden
+          path: juno-garden
+
+      # The vault is PRIVATE — the default GITHUB_TOKEN is scoped to this repo only, so a
+      # PAT with read access is required. This checkout is the only place vault content
+      # touches the runner; the filter step below decides what may leave it.
+      - name: Checkout juno-vault (private)
+        uses: actions/checkout@v4
+        with:
+          repository: Juno-qwq/juno-vault
+          token: ${{ secrets.VAULT_READ_TOKEN }}
+          path: juno-vault
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install juno-garden deps
+        working-directory: juno-garden
+        run: npm ci
+
+      - name: Install juno-site deps
+        working-directory: juno-site
+        run: npm ci
+
+      # --- The privacy firewall -------------------------------------------------------
+      # Both of the next two steps go through juno-vault/_system/scripts/vault-filter.mjs,
+      # the single implementation of the publish gates. Nothing without `publish: true`
+      # reaches the garden; nothing without `status: published` reaches the blog.
+
+      - name: Filter vault → garden content
+        working-directory: juno-garden
+        env:
+          VAULT_PATH: ${{ github.workspace }}/juno-vault
+        run: npm run sync-local
+
+      - name: Build garden (Quartz)
+        working-directory: juno-garden
+        run: npx quartz build
+
+      # extract-blog runs automatically via juno-site's `prebuild` hook. It fails the build
+      # on a frontmatter schema violation rather than shipping a mangled post.
+      - name: Build site (Next.js static export)
+        working-directory: juno-site
+        env:
+          VAULT_PATH: ${{ github.workspace }}/juno-vault
+          NEXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL || 'https://juno.dev' }}
+        run: npm run build
+
+      - name: Merge garden into site artifact
+        run: |
+          set -euo pipefail
+          rm -rf juno-site/out/garden
+          mkdir -p juno-site/out/garden
+          cp -r juno-garden/public/. juno-site/out/garden/
+          test -f juno-site/out/index.html
+          test -f juno-site/out/garden/index.html
+          echo "Merged artifact: $(find juno-site/out -type f | wc -l) files"
+
+      # Last line of defence. If a private note ever reaches the artifact, fail here rather
+      # than publish it — a failed deploy is recoverable, a leak is not.
+      - name: Verify no private content in artifact
+        run: |
+          set -euo pipefail
+          if find juno-site/out -iname '*_private*' -o -ipath '*_private*' | grep -q .; then
+            echo "::error::_private content present in the deploy artifact"; exit 1
+          fi
+          if [ -d juno-site/out/garden/Blog ]; then
+            echo "::error::vault Blog/ leaked into the garden output"; exit 1
+          fi
+          echo "Privacy check passed."
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy juno-site/out --project-name=juno --branch=main

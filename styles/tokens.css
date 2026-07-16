@@ -37,6 +37,9 @@
   --track: rgba(111, 134, 214, 0.18);
   --track-fill: linear-gradient(90deg, #6f86d6, #d3a24a);
 
+  /* Code blocks in rendered prose (.post-body) */
+  --code-bg: rgba(255, 255, 255, 0.55);
+
   /* Full-page backdrop + foreground overlay images (swapped by theme). */
   --backdrop-image: url("/img/background_light.png");
   --overlay-image: url("/img/foreground_overlay_light.png");
@@ -85,6 +88,9 @@
   /* Data-viz / progress */
   --track: rgba(124, 138, 168, 0.22);
   --track-fill: linear-gradient(90deg, #2dd4bf, #b483f0);
+
+  /* Code blocks in rendered prose (.post-body) */
+  --code-bg: rgba(8, 12, 24, 0.5);
 
   /* Full-page backdrop + foreground overlay images (dark). */
   --backdrop-image: url("/img/background_dark.png");

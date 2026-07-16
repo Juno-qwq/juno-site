@@ -1,5 +1,20 @@
-// Static site chrome data — socials, taglines, quotes. `icon` keys map to lucide icons in
-// components. Edit here only.
+// Static site chrome data — identity, socials, taglines, quotes. `icon` keys map to lucide
+// icons in components. Edit here only.
+
+/**
+ * Canonical identity used for metadata, OG cards, sitemap, and robots.
+ * `url` must match the production origin — it is what absolute OG/canonical URLs are built
+ * from, and a wrong value silently breaks link previews.
+ */
+export const site = {
+  name: "Juno",
+  title: "Juno — Digital Garden",
+  description: "A digital garden for quant, AI, systems, and research by Junle (Juno) Zhou.",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://juno.dev",
+  locale: "en_US",
+  ogImage: "/img/og.png",
+} as const
+
 export type Social = { label: string; href: string; icon: "github" | "x" | "mail" | "linkedin" }
 
 export const socials: Social[] = [

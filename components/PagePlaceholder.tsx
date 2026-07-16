@@ -19,7 +19,7 @@ export function PagePlaceholder({
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto max-w-6xl px-5 pb-24 pt-6">
+      <main id="main-content" className="mx-auto max-w-6xl px-5 pb-24 pt-6">
         <GlassCard className="p-8 md:p-12" glow>
           <p className="text-xs uppercase tracking-[0.25em] text-accent-2">{kicker}</p>
           <h1 className="mt-2 text-4xl font-bold text-gradient md:text-5xl">{title}</h1>
