@@ -15,6 +15,7 @@ import {
   NotebookText,
   PenSquare,
   User,
+  Waypoints,
   X,
 } from "lucide-react"
 import { ThemeToggle } from "./ThemeToggle"
@@ -26,6 +27,7 @@ type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?:
 const NAV: NavItem[] = [
   { label: "Home", href: "/", icon: Home },
   { label: "Notes", href: "/garden/", icon: NotebookText, external: true },
+  { label: "Roadmap", href: "/roadmap/", icon: Waypoints },
   { label: "Blog", href: "/blog/", icon: PenSquare },
   { label: "Projects", href: "/projects/", icon: FolderGit2 },
   { label: "Research", href: "/research/", icon: FlaskConical },

@@ -5,15 +5,18 @@
   "type": "module",
   "scripts": {
     "extract-blog": "node scripts/extract-blog.mjs",
-    "predev": "node scripts/extract-blog.mjs",
+    "extract-roadmap": "node scripts/roadmap-extract.mjs",
+    "extract": "node scripts/extract-blog.mjs && node scripts/roadmap-extract.mjs",
+    "predev": "npm run extract",
     "dev": "next dev",
-    "prebuild": "node scripts/extract-blog.mjs",
+    "prebuild": "npm run extract",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "serve:out": "npx serve out"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.0.0",
     "lucide-react": "^0.469.0",
     "motion": "^11.15.0",
     "next": "^15.1.4",

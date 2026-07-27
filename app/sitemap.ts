@@ -9,7 +9,7 @@ import { site } from "@/lib/site"
  */
 export const dynamic = "force-static"
 
-const STATIC_ROUTES = ["/", "/blog/", "/projects/", "/research/", "/reading/", "/about/", "/now/"]
+const STATIC_ROUTES = ["/", "/roadmap/", "/blog/", "/projects/", "/research/", "/reading/", "/about/", "/now/"]
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()

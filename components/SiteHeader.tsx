@@ -5,6 +5,7 @@ import { ThemeToggle } from "./ThemeToggle"
 const NAV = [
   { label: "Home", href: "/" },
   { label: "Notes", href: "/garden/" },
+  { label: "Roadmap", href: "/roadmap/" },
   { label: "Blog", href: "/blog/" },
   { label: "Projects", href: "/projects/" },
   { label: "Research", href: "/research/" },
