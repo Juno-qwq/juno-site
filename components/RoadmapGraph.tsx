@@ -36,6 +36,13 @@ const CAT_HUES = ["#6f86d6", "#2dd4bf", "#d3a24a", "#b483f0", "#e06c9f", "#5bb3e
 const NODE_W = 210
 const NODE_H = 64
 
+// Pinch-zoom sensitivity for our custom handler. d3-zoom's built-in pinch is ~0.0139; higher =
+// faster. React Flow exposes no pinch-speed prop, so we drive zoom ourselves (see Flow's wheel
+// effect) to make the gesture feel responsive.
+const ZOOM_SENSITIVITY = 0.032
+const MIN_ZOOM = 0.25
+const MAX_ZOOM = 2.6
+
 // ---------------------------------------------------------------------------
 // Custom node
 // ---------------------------------------------------------------------------
@@ -162,7 +169,7 @@ function Flow({
   onSelect: (id: string | null) => void
   colorMode: "light" | "dark"
 }) {
-  const { fitView } = useReactFlow()
+  const { fitView, getViewport, setViewport } = useReactFlow()
   const wrapperRef = useRef<HTMLDivElement>(null)
   const selectedRef = useRef<string | null>(selected)
   selectedRef.current = selected
@@ -258,6 +265,28 @@ function Flow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature])
 
+  // Custom pinch zoom. A trackpad pinch arrives as ctrl+wheel; React Flow's built-in pinch speed
+  // isn't configurable and feels slow, so we intercept ctrl+wheel and zoom (centered on the
+  // cursor) at ZOOM_SENSITIVITY. Plain two-finger scroll (no ctrl) falls through to RF's panning.
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      const { x, y, zoom } = getViewport()
+      const rect = el.getBoundingClientRect()
+      const px = e.clientX - rect.left
+      const py = e.clientY - rect.top
+      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * Math.exp(-e.deltaY * ZOOM_SENSITIVITY)))
+      const k = next / zoom
+      setViewport({ x: px - (px - x) * k, y: py - (py - y) * k, zoom: next })
+    }
+    el.addEventListener("wheel", onWheel, { passive: false, capture: true })
+    return () => el.removeEventListener("wheel", onWheel, { capture: true } as EventListenerOptions)
+  }, [getViewport, setViewport])
+
   // Reapply selection highlight after the node set renders (also covers deep-linked selection).
   useEffect(() => {
     const r = requestAnimationFrame(() => {
@@ -276,16 +305,17 @@ function Flow({
         colorMode={colorMode}
         fitView
         fitViewOptions={{ padding: 0.16 }}
-        minZoom={0.25}
-        maxZoom={2.6}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable
-        // Trackpad-native navigation: two-finger scroll pans (any direction), pinch zooms.
+        // Trackpad-native navigation: two-finger scroll pans (any direction); pinch (ctrl+wheel)
+        // is handled by our own faster listener above, so RF's built-in pinch is disabled.
         panOnScroll
         panOnScrollSpeed={1.6}
         zoomOnScroll={false}
-        zoomOnPinch
+        zoomOnPinch={false}
         panOnDrag
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, n) => n.type === "roadmap" && onSelect(n.id)}
