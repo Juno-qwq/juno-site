@@ -1,9 +1,13 @@
+import "katex/dist/katex.min.css"
+
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { getGarden, getGardenNote, getGardenNotes, titleOf } from "@/lib/garden"
+import { GlassCard } from "@/components/GlassCard"
 import { GardenGraph, type GraphLink, type GraphNode } from "@/components/garden/GardenGraph"
 import { GardenSearch } from "@/components/garden/GardenSearch"
+import { GardenHoverPreviews } from "@/components/garden/GardenHoverPreviews"
 
 export function generateStaticParams(): { slug: string[] }[] {
   return getGardenNotes().map((n) => ({ slug: n.route.split("/") }))
@@ -13,11 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const note = getGardenNote(slug)
   if (!note) return {}
-  return {
-    title: note.title,
-    description: note.preview,
-    alternates: { canonical: note.url },
-  }
+  return { title: note.title, description: note.preview, alternates: { canonical: note.url } }
 }
 
 export default async function GardenNotePage({ params }: { params: Promise<{ slug: string[] }> }) {
@@ -26,6 +26,7 @@ export default async function GardenNotePage({ params }: { params: Promise<{ slu
   if (!note) notFound()
 
   const { notes, search } = getGarden()
+  const previews = Object.fromEntries(search.map((s) => [s.url, { title: s.title, preview: s.preview }]))
 
   // Local mindmap: this note + its direct neighbours, with neighbour↔neighbour edges for context.
   const neighborUrls = [...new Set([...note.outgoing, ...note.backlinks])]
@@ -49,8 +50,9 @@ export default async function GardenNotePage({ params }: { params: Promise<{ slu
 
   return (
     <main id="main-content" className="mx-auto max-w-6xl px-4 pb-16 pt-14 lg:px-6 lg:pt-6">
-      <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
-        <article className="min-w-0">
+      <GardenHoverPreviews previews={previews} />
+      <div className="grid gap-5 xl:grid-cols-[1fr_300px]">
+        <GlassCard as="article" className="min-w-0 p-6 md:p-8">
           <nav className="flex flex-wrap items-center gap-1.5 text-xs text-text-muted" aria-label="Breadcrumb">
             <Link href="/garden/" className="hover:text-accent-2">Garden</Link>
             {crumbs.map((c) => (
@@ -71,18 +73,18 @@ export default async function GardenNotePage({ params }: { params: Promise<{ slu
 
           <hr className="my-5 border-card-border" />
           <div className="post-body" dangerouslySetInnerHTML={{ __html: note.html }} />
-        </article>
+        </GlassCard>
 
-        <aside className="min-w-0 space-y-5 xl:sticky xl:top-6 xl:self-start">
+        <aside className="min-w-0 space-y-4 xl:sticky xl:top-6 xl:self-start">
           <GardenSearch index={search} className="w-full" />
 
-          <section className="rounded-xl border border-card-border bg-[var(--card)] p-3">
+          <GlassCard className="p-4">
             <h2 className="mb-2 text-[0.7rem] font-semibold uppercase tracking-wider text-text-muted">Graph</h2>
             <GardenGraph nodes={graphNodes} links={graphLinks} />
-          </section>
+          </GlassCard>
 
           {note.headings.length > 0 && (
-            <section>
+            <GlassCard className="p-4">
               <h2 className="mb-2 text-[0.7rem] font-semibold uppercase tracking-wider text-text-muted">On this page</h2>
               <ul className="space-y-1 text-sm">
                 {note.headings.map((h) => (
@@ -91,11 +93,11 @@ export default async function GardenNotePage({ params }: { params: Promise<{ slu
                   </li>
                 ))}
               </ul>
-            </section>
+            </GlassCard>
           )}
 
           {backlinkNotes.length > 0 && (
-            <section>
+            <GlassCard className="p-4">
               <h2 className="mb-2 text-[0.7rem] font-semibold uppercase tracking-wider text-text-muted">
                 Linked from ({backlinkNotes.length})
               </h2>
@@ -106,7 +108,7 @@ export default async function GardenNotePage({ params }: { params: Promise<{ slu
                   </li>
                 ))}
               </ul>
-            </section>
+            </GlassCard>
           )}
         </aside>
       </div>

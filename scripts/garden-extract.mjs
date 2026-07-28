@@ -2,13 +2,13 @@
 /**
  * garden-extract — every `publish: true` vault note → content/garden/garden.json.
  *
- * This is the native replacement for Quartz: the Next site renders the garden itself, in the same
- * shell and design system as the rest of the site. Runs in `prebuild`, reusing the shared
- * vault-filter (the same privacy firewall as the blog + roadmap) and the blog's markdown pipeline.
+ * The native replacement for Quartz: the Next site renders the garden itself, in the same shell and
+ * design system as the rest of the site. Runs in `prebuild`, reusing the shared vault-filter (the
+ * same privacy firewall as the blog + roadmap).
  *
- * For each note it emits rendered HTML (wikilinks already resolved to /garden/… URLs), the outgoing
- * garden links, headings (for a table of contents), and — computed across the set — backlinks. Plus
- * a folder tree for the explorer and a light search index.
+ * Supports Obsidian features: wikilinks, KaTeX math ($…$ / $$…$$), callouts (> [!note]), and note
+ * transclusions (![[note]] embeds the target inline). For each note it emits rendered HTML plus the
+ * outgoing links, backlinks, headings (ToC), a folder tree, and a search index.
  */
 import { mkdir, rm, writeFile } from "node:fs/promises"
 import { existsSync } from "node:fs"
@@ -18,10 +18,14 @@ import { pathToFileURL, fileURLToPath } from "node:url"
 import { unified } from "unified"
 import remarkParse from "remark-parse"
 import remarkGfm from "remark-gfm"
+import remarkMath from "remark-math"
 import remarkRehype from "remark-rehype"
+import rehypeRaw from "rehype-raw"
+import rehypeKatex from "rehype-katex"
 import rehypeSlug from "rehype-slug"
 import rehypeHighlight from "rehype-highlight"
 import rehypeStringify from "rehype-stringify"
+import rehypeCallouts from "./rehype-callouts.mjs"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SITE = path.resolve(__dirname, "..")
@@ -31,7 +35,11 @@ const OUT = path.join(SITE, "content", "garden")
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
-  .use(remarkRehype)
+  .use(remarkMath)
+  .use(remarkRehype, { allowDangerousHtml: true }) // trusted content (my own vault), like the blog
+  .use(rehypeRaw) // parse the raw transclusion <div>s
+  .use(rehypeCallouts)
+  .use(rehypeKatex)
   .use(rehypeSlug)
   .use(rehypeHighlight, { detect: false, ignoreMissing: true })
   .use(rehypeStringify)
@@ -39,8 +47,9 @@ const processor = unified()
 const stripLeadingH1 = (body) => body.replace(/^\s*#\s+.+\r?\n/, "").trimStart()
 const asArray = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
 const stripTags = (s) => s.replace(/<[^>]+>/g, "").trim()
+const escapeAttr = (s) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+const unescapeAttr = (s) => s.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
 
-/** Headings (h2/h3) with their slug ids, for the table of contents. */
 function extractHeadings(html) {
   const out = []
   const re = /<h([23])\s+id="([^"]+)"[^>]*>([\s\S]*?)<\/h\1>/g
@@ -49,14 +58,15 @@ function extractHeadings(html) {
   return out
 }
 
-/** Outgoing garden links found in the rendered HTML (deduped, self excluded). */
+/** Outgoing garden links: resolved <a href> plus transclusion embed targets. */
 function extractOutgoing(html, self) {
   const set = new Set()
-  const re = /href="(\/garden\/[^"#]+)/g
-  let m
-  while ((m = re.exec(html))) {
-    const target = m[1].replace(/\/$/, "")
-    if (target !== self) set.add(target)
+  for (const re of [/href="(\/garden\/[^"#]+)/g, /data-embed="(\/garden\/[^"#]+)/g]) {
+    let m
+    while ((m = re.exec(html))) {
+      const target = m[1].replace(/\/$/, "")
+      if (target !== self) set.add(target)
+    }
   }
   return [...set]
 }
@@ -75,14 +85,32 @@ async function main() {
   const index = buildPublishedIndex(notes)
   const published = notes.filter((n) => isGardenPublished(n.data))
 
-  const byId = new Map()
+  // url → title, so transclusions can label their target.
+  const titleByUrl = new Map(published.map((n) => [`/garden/${n.route}`, n.data.title ?? n.basename]))
+
+  // `![[target(#h)?(|label)?]]` → a raw transclusion div (rehype-raw turns it into a real element).
+  // Unresolved targets (private/missing) are dropped — never leak their existence.
+  const replaceEmbeds = (body) =>
+    body.replace(/!\[\[([^\]]+)\]\]/g, (_full, inner) => {
+      const target = inner.split("|")[0].split("#")[0].trim()
+      const url = index.get(target.toLowerCase())
+      if (!url) return ""
+      const title = escapeAttr(titleByUrl.get(url) ?? target)
+      return `\n\n<div class="transclusion" data-embed="${url}" data-title="${title}"></div>\n\n`
+    })
+
+  // Pass 1: render each note to HTML with transclusions still un-expanded (empty marker divs).
+  const rawByUrl = new Map()
+  const meta = []
   for (const n of published) {
     const url = `/garden/${n.route}`
-    const html = String(await processor.process(resolveWikilinks(stripLeadingH1(n.body), index)))
-      // GFM task-list checkboxes are decorative disabled inputs — hide them from a11y (the item
-      // text carries the meaning) so they don't trip the "every input needs a label" rule.
-      .replace(/(<input\b)([^>]*\btype="checkbox")/g, '$1 aria-hidden="true"$2')
-    byId.set(url, {
+    const md = resolveWikilinks(replaceEmbeds(stripLeadingH1(n.body)), index)
+    const html = String(await processor.process(md)).replace(
+      /(<input\b)([^>]*\btype="checkbox")/g,
+      '$1 aria-hidden="true"$2',
+    )
+    rawByUrl.set(url, html)
+    meta.push({
       url,
       route: n.route,
       title: n.data.title ?? n.basename,
@@ -90,29 +118,44 @@ async function main() {
       type: n.data.type ?? "note",
       tags: asArray(n.data.tags).map(String),
       updated: n.data.updated ?? n.data.created ?? "",
-      html,
       headings: extractHeadings(html),
-      outgoing: extractOutgoing(html, url),
-      // Plain-text preview for search (first ~30 words).
+      outgoing: extractOutgoing(html, url).filter((t) => titleByUrl.has(t)),
       preview: stripTags(html).replace(/\s+/g, " ").trim().split(" ").slice(0, 30).join(" "),
     })
   }
 
-  // Backlinks = reverse of outgoing, restricted to notes that actually exist.
+  // Pass 2: expand transclusions inline, recursively, with a depth cap + cycle guard.
+  const expand = (html, depth, ancestors) => {
+    if (depth <= 0) return html
+    return html.replace(
+      /<div class="transclusion" data-embed="([^"]*)" data-title="([^"]*)"><\/div>/g,
+      (_m, url, title) => {
+        const t = unescapeAttr(title)
+        const target = rawByUrl.get(url)
+        const head = `<a class="transclusion-title" href="${url}">${t}</a>`
+        if (!target || ancestors.has(url)) {
+          return `<aside class="transclusion">${head}<p class="transclusion-note">Embedded note — open to read.</p></aside>`
+        }
+        const inner = expand(target, depth - 1, new Set([...ancestors, url]))
+        return `<aside class="transclusion">${head}<div class="transclusion-body">${inner}</div></aside>`
+      },
+    )
+  }
+
+  const byUrl = new Map()
+  for (const m of meta) byUrl.set(m.url, { ...m, html: expand(rawByUrl.get(m.url), 3, new Set([m.url])) })
+
+  // Backlinks = reverse of outgoing.
   const backlinks = new Map()
-  for (const note of byId.values()) {
+  for (const note of byUrl.values()) {
     for (const target of note.outgoing) {
-      if (!byId.has(target)) continue
+      if (!byUrl.has(target)) continue
       if (!backlinks.has(target)) backlinks.set(target, [])
       backlinks.get(target).push(note.url)
     }
   }
 
-  const notesOut = [...byId.values()].map((n) => ({
-    ...n,
-    outgoing: n.outgoing.filter((t) => byId.has(t)),
-    backlinks: [...new Set(backlinks.get(n.url) ?? [])],
-  }))
+  const notesOut = [...byUrl.values()].map((n) => ({ ...n, backlinks: [...new Set(backlinks.get(n.url) ?? [])] }))
   notesOut.sort((a, b) => a.route.localeCompare(b.route))
 
   // Folder tree for the explorer.
@@ -131,14 +174,12 @@ async function main() {
   const serializeTree = (node) => ({
     name: node.name,
     path: node.path,
-    // Index notes (`_Folder`) sort first, like the vault.
     notes: node.notes.sort((a, b) => a.base.localeCompare(b.base)),
     folders: [...node.folders.values()].sort((a, b) => a.name.localeCompare(b.name)).map(serializeTree),
   })
 
-  const searchIndex = notesOut.map((n) => ({ url: n.url, title: n.title, tags: n.tags, preview: n.preview }))
-
-  const out = { generatedAt: new Date().toISOString(), notes: notesOut, tree: serializeTree(tree), search: searchIndex }
+  const search = notesOut.map((n) => ({ url: n.url, title: n.title, tags: n.tags, preview: n.preview }))
+  const out = { generatedAt: new Date().toISOString(), notes: notesOut, tree: serializeTree(tree), search }
 
   await rm(OUT, { recursive: true, force: true })
   await mkdir(OUT, { recursive: true })

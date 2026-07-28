@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { getGarden } from "@/lib/garden"
+import { GlassCard } from "@/components/GlassCard"
 import { GardenExplorer } from "@/components/garden/GardenExplorer"
 import { GardenSearch } from "@/components/garden/GardenSearch"
 
@@ -19,26 +20,25 @@ export default function GardenIndexPage() {
 
   return (
     <main id="main-content" className="mx-auto max-w-6xl px-4 pb-16 pt-14 lg:px-6 lg:pt-6">
-      <p className="text-xs uppercase tracking-[0.25em] text-accent-2">Notes</p>
-      <h1 className="mt-2 text-4xl font-bold text-gradient md:text-5xl">Digital Garden</h1>
-      <p className="mt-3 max-w-2xl text-text-muted">
-        {notes.length} interlinked notes, grown from my vault. Wander via links, search, or the tree — most
-        notes are seeds that grow over time.
-      </p>
+      <GlassCard className="p-8 md:p-10" glow>
+        <p className="text-xs uppercase tracking-[0.25em] text-accent-2">Notes</p>
+        <h1 className="mt-2 text-4xl font-bold text-gradient md:text-5xl">Digital Garden</h1>
+        <p className="mt-3 max-w-2xl text-text-muted">
+          {notes.length} interlinked notes, grown from my vault. Wander via links, search, or the tree —
+          most notes are seeds that grow over time.
+        </p>
+        <div className="mt-5 max-w-md">
+          <GardenSearch index={search} className="w-full" />
+        </div>
+      </GlassCard>
 
-      <div className="mt-6 max-w-md">
-        <GardenSearch index={search} className="w-full" />
-      </div>
-
-      <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_320px]">
-        <section>
+      <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_320px]">
+        <GlassCard className="p-4">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-text-muted">Browse</h2>
-          <div className="rounded-xl border border-card-border bg-[var(--card)] p-3">
-            <GardenExplorer tree={tree} />
-          </div>
-        </section>
+          <GardenExplorer tree={tree} />
+        </GlassCard>
 
-        <section>
+        <GlassCard className="p-4">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-text-muted">Recently updated</h2>
           <ul className="space-y-2">
             {recent.map((n) => (
@@ -50,7 +50,7 @@ export default function GardenIndexPage() {
               </li>
             ))}
           </ul>
-        </section>
+        </GlassCard>
       </div>
     </main>
   )

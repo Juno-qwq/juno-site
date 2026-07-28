@@ -351,3 +351,72 @@
 .roadmap-flow .react-flow__node:focus-visible {
   outline: none;
 }
+
+/* ---------------------------------------------------------------------------
+   Garden note extras: callouts, transclusions (embeds), and KaTeX math.
+   All theme-token driven so they read in both palettes.
+   --------------------------------------------------------------------------- */
+.post-body .callout {
+  margin: 1.15em 0;
+  border-radius: 0.6rem;
+  border-left: 3px solid var(--callout-color, var(--accent-2));
+  background: color-mix(in srgb, var(--callout-color, var(--accent-2)) 9%, transparent);
+  padding: 0.7rem 1rem;
+}
+.post-body .callout-title {
+  font-weight: 650;
+  color: var(--heading);
+  margin-bottom: 0.3rem;
+}
+.post-body .callout-content > :first-child { margin-top: 0; }
+.post-body .callout-content > :last-child { margin-bottom: 0; }
+.post-body .callout-note, .post-body .callout-info, .post-body .callout-quote, .post-body .callout-abstract { --callout-color: #6f86d6; }
+.post-body .callout-tip, .post-body .callout-success { --callout-color: #2dd4bf; }
+.post-body .callout-warning, .post-body .callout-caution, .post-body .callout-important, .post-body .callout-todo { --callout-color: #e0b45f; }
+.post-body .callout-danger, .post-body .callout-error { --callout-color: #e06c9f; }
+.post-body .callout-question, .post-body .callout-example { --callout-color: #b483f0; }
+
+.post-body .transclusion {
+  display: block;
+  margin: 1.2em 0;
+  border: 1px solid var(--card-border);
+  border-left: 3px solid var(--accent-2);
+  border-radius: 0.6rem;
+  background: var(--card);
+  padding: 0.6rem 1rem;
+}
+.post-body .transclusion-title {
+  display: inline-block;
+  margin-bottom: 0.3rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-2);
+  text-decoration: none;
+}
+.post-body .transclusion-title::before { content: "▤ "; }
+.post-body .transclusion-title:hover { text-decoration: underline; }
+.post-body .transclusion-body > :first-child { margin-top: 0; }
+.post-body .transclusion-body > :last-child { margin-bottom: 0; }
+.post-body .transclusion-note { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+
+/* KaTeX inherits text colour from .post-body; just make display math scroll instead of overflow. */
+.post-body .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
+
+/* Hover link preview card for internal garden links. */
+.garden-preview {
+  position: fixed;
+  z-index: 70;
+  max-width: 22rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--card-border);
+  background: var(--card-strong);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(var(--blur-glass, 14px));
+  padding: 0.7rem 0.85rem;
+  pointer-events: none;
+}
