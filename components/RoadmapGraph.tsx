@@ -10,7 +10,7 @@ import {
 } from "@xyflow/react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  BookOpen, Circle, ExternalLink, FileBox, FileText, Github,
+  BookOpen, ChevronLeft, ChevronRight, Circle, ExternalLink, FileBox, FileText, Github,
   GraduationCap, MousePointerClick, Video, Waypoints, X,
 } from "lucide-react"
 import { GlassCard } from "@/components/GlassCard"
@@ -35,6 +35,10 @@ const CAT_HUES = ["#6f86d6", "#2dd4bf", "#d3a24a", "#b483f0", "#e06c9f", "#5bb3e
 
 const NODE_W = 210
 const NODE_H = 64
+
+// The graph card and the detail panel share this height so the panel never stretches the page —
+// its body paginates instead (see NodePanel).
+const PANEL_H = 620
 
 // Pinch-zoom sensitivity for our custom handler. d3-zoom's built-in pinch is ~0.0139; higher =
 // faster. React Flow exposes no pinch-speed prop, so we drive zoom ourselves (see Flow's wheel
@@ -442,7 +446,7 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
 
       {/* Graph gets the full width until a node is selected; then a panel opens beside it. */}
       <div className={selectedNode ? "grid gap-4 lg:grid-cols-[1fr_340px]" : ""}>
-        <GlassCard strong className="roadmap-flow relative overflow-hidden p-0" style={{ height: 620 }}>
+        <GlassCard strong className="roadmap-flow relative overflow-hidden p-0" style={{ height: PANEL_H }}>
           {mounted ? (
             <ReactFlowProvider>
               <Flow
@@ -465,7 +469,7 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
 
         {selectedNode && (
           <div className="min-w-0">
-            <NodePanel node={selectedNode} allNodes={data.nodes} onSelect={setSelected} onClose={() => setSelected(null)} />
+            <NodePanel key={selectedNode.id} node={selectedNode} allNodes={data.nodes} onSelect={setSelected} onClose={() => setSelected(null)} />
           </div>
         )}
       </div>
@@ -522,85 +526,145 @@ function NodePanel({
 }) {
   const Icon = KIND_ICON[node.resourceKind]
   const prereqNodes = node.prerequisites.map((p) => allNodes.find((n) => n.id === p)).filter(Boolean) as RoadmapNode[]
+
+  // Page the (sometimes very long) body inside a fixed-height region instead of stretching the
+  // page. "Pages" = scroll-by-viewport; Prev/Next jump one page, the wheel still works, and the
+  // indicator tracks manual scrolling.
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const [page, setPage] = useState(0)
+  const [pageCount, setPageCount] = useState(1)
+
+  const measure = useCallback(() => {
+    const el = bodyRef.current
+    if (!el) return
+    const count = Math.max(1, Math.ceil((el.scrollHeight - 1) / el.clientHeight))
+    setPageCount(count)
+    setPage(Math.min(Math.round(el.scrollTop / el.clientHeight), count - 1))
+  }, [])
+
+  useEffect(() => {
+    const r = requestAnimationFrame(measure)
+    window.addEventListener("resize", measure)
+    return () => {
+      cancelAnimationFrame(r)
+      window.removeEventListener("resize", measure)
+    }
+  }, [measure])
+
+  const turn = (dir: number) => {
+    const el = bodyRef.current
+    if (!el) return
+    const next = Math.min(pageCount - 1, Math.max(0, page + dir))
+    el.scrollTo({ top: next * el.clientHeight, behavior: "smooth" })
+    setPage(next)
+  }
+
   return (
-    <GlassCard className="p-5" glow>
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-text-muted">
-          <Icon size={14} /> {KIND_LABEL[node.resourceKind]}
-        </div>
-        <button type="button" aria-label="Close" onClick={onClose} className="text-text-muted hover:text-accent-2">
-          <X size={16} />
-        </button>
-      </div>
-      <h2 className="mt-1 font-display text-xl font-bold leading-tight text-heading">{node.title}</h2>
-
-      <div className="mt-3">
-        <div className="flex items-center justify-between text-xs text-text-muted">
-          <span>Progress</span>
-          <span className="text-text">{node.progress}%</span>
-        </div>
-        <div className="mt-1 h-2 overflow-hidden rounded-full bg-[var(--track)]">
-          <div className="h-full rounded-full" style={{ width: `${node.progress}%`, background: "var(--track-fill)" }} />
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-1">
-        {node.categories.map((c) => (
-          <span key={c} className="rounded-full bg-[var(--track)] px-2 py-0.5 text-[0.6rem] capitalize text-text">
-            {c.replace(/-/g, " ")}
-          </span>
-        ))}
-      </div>
-
-      {prereqNodes.length > 0 && (
-        <div className="mt-3 text-xs">
-          <div className="text-text-muted">Prerequisites</div>
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {prereqNodes.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => onSelect(p.id)}
-                className="rounded-md border border-card-border bg-[var(--card)] px-2 py-0.5 text-text transition-colors hover:text-accent-2"
-              >
-                {p.title}
-              </button>
-            ))}
+    <GlassCard glow className="flex flex-col overflow-hidden p-0" style={{ height: PANEL_H }}>
+      {/* Fixed header */}
+      <div className="shrink-0 border-b border-card-border p-4 pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-text-muted">
+            <Icon size={14} /> {KIND_LABEL[node.resourceKind]}
           </div>
+          <button type="button" aria-label="Close" onClick={onClose} className="text-text-muted hover:text-accent-2">
+            <X size={16} />
+          </button>
         </div>
-      )}
+        <h2 className="mt-1 font-display text-lg font-bold leading-tight text-heading">{node.title}</h2>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--track)]">
+            <div className="h-full rounded-full" style={{ width: `${node.progress}%`, background: "var(--track-fill)" }} />
+          </div>
+          <span className="text-xs text-text-muted">{node.progress}%</span>
+        </div>
+      </div>
 
-      <div className="post-body mt-4 text-sm" dangerouslySetInnerHTML={{ __html: node.html }} />
+      {/* Paged body */}
+      <div ref={bodyRef} onScroll={measure} className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        <div className="flex flex-wrap gap-1">
+          {node.categories.map((c) => (
+            <span key={c} className="rounded-full bg-[var(--track)] px-2 py-0.5 text-[0.6rem] capitalize text-text">
+              {c.replace(/-/g, " ")}
+            </span>
+          ))}
+        </div>
 
-      {/* A milestone that anchors a concept cluster links into its garden mindmap (the wikilink
-          graph Quartz renders for that topic). */}
-      {node.conceptMapUrl && (
-        <a
-          href={node.conceptMapUrl}
-          className="mt-4 flex items-center justify-center gap-1.5 rounded-lg border border-accent-2/50 bg-[var(--card-strong)] px-3 py-2 text-sm font-medium text-heading transition-colors hover:text-accent-2"
-        >
-          <Waypoints size={15} className="text-accent-2" /> Explore concept map →
-        </a>
-      )}
+        {prereqNodes.length > 0 && (
+          <div className="mt-3 text-xs">
+            <div className="text-text-muted">Prerequisites</div>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {prereqNodes.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onSelect(p.id)}
+                  className="rounded-md border border-card-border bg-[var(--card)] px-2 py-0.5 text-text transition-colors hover:text-accent-2"
+                >
+                  {p.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-      <div className="mt-3 flex flex-wrap gap-2 text-sm">
-        {node.resourceUrl && (
+        <div className="post-body mt-3 text-sm" dangerouslySetInnerHTML={{ __html: node.html }} />
+      </div>
+
+      {/* Fixed footer: actions + page turner */}
+      <div className="shrink-0 space-y-2 border-t border-card-border p-3">
+        {node.conceptMapUrl && (
           <a
-            href={node.resourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 font-medium text-[var(--accent-contrast)]"
-            style={{ background: "var(--accent)" }}
+            href={node.conceptMapUrl}
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-accent-2/50 bg-[var(--card-strong)] px-3 py-1.5 text-sm font-medium text-heading transition-colors hover:text-accent-2"
           >
-            Open resource <ExternalLink size={13} />
+            <Waypoints size={15} className="text-accent-2" /> Explore concept map →
           </a>
         )}
-        <a
-          href={node.route}
-          className="inline-flex items-center gap-1 rounded-lg border border-card-border bg-card px-3 py-1.5 text-heading transition-colors hover:text-accent-2"
-        >
-          Open note →
-        </a>
+        <div className="flex items-center gap-2 text-sm">
+          {node.resourceUrl && (
+            <a
+              href={node.resourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 font-medium text-[var(--accent-contrast)]"
+              style={{ background: "var(--accent)" }}
+            >
+              Resource <ExternalLink size={13} />
+            </a>
+          )}
+          <a
+            href={node.route}
+            className="inline-flex items-center gap-1 rounded-lg border border-card-border bg-card px-3 py-1.5 text-heading transition-colors hover:text-accent-2"
+          >
+            Open note →
+          </a>
+          {pageCount > 1 && (
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                type="button"
+                aria-label="Previous page"
+                onClick={() => turn(-1)}
+                disabled={page === 0}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-card-border text-heading transition-colors hover:text-accent-2 disabled:opacity-40"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <span className="min-w-[2.5rem] text-center text-xs tabular-nums text-text-muted">
+                {page + 1} / {pageCount}
+              </span>
+              <button
+                type="button"
+                aria-label="Next page"
+                onClick={() => turn(1)}
+                disabled={page === pageCount - 1}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-card-border text-heading transition-colors hover:text-accent-2 disabled:opacity-40"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </GlassCard>
   )
