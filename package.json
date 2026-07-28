@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.0.0",
+    "@xyflow/react": "^12.11.2",
     "lucide-react": "^0.469.0",
     "motion": "^11.15.0",
     "next": "^15.1.4",

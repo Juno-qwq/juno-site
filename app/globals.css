@@ -317,3 +317,36 @@
 .post-body .hljs-variable {
   color: var(--text);
 }
+
+/* ---------------------------------------------------------------------------
+   React Flow chrome (the roadmap graph) — themed to match the glass tokens.
+   The node bodies are our own components; these rules only touch RF's own
+   controls / minimap / edges so they don't clash with either palette.
+   --------------------------------------------------------------------------- */
+.roadmap-flow .react-flow__controls {
+  box-shadow: var(--shadow-card);
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+.roadmap-flow .react-flow__controls-button {
+  background: var(--card-strong);
+  border-bottom: 1px solid var(--card-border);
+  color: var(--heading);
+}
+.roadmap-flow .react-flow__controls-button:hover {
+  background: var(--card);
+}
+.roadmap-flow .react-flow__controls-button svg {
+  fill: currentColor;
+}
+.roadmap-flow .react-flow__edge-path {
+  transition: stroke-opacity 0.2s ease, stroke-width 0.2s ease;
+}
+.roadmap-flow .react-flow__attribution {
+  display: none;
+}
+/* Selection/hover outline handled in the node component; kill RF's default. */
+.roadmap-flow .react-flow__node:focus,
+.roadmap-flow .react-flow__node:focus-visible {
+  outline: none;
+}

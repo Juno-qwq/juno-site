@@ -1,12 +1,20 @@
 "use client"
 
+import "@xyflow/react/dist/style.css"
+
 import dagre from "@dagrejs/dagre"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  Background, BackgroundVariant, Controls, Handle, MarkerType, MiniMap,
+  Position, ReactFlow, ReactFlowProvider, useReactFlow,
+  type Edge, type Node, type NodeProps,
+} from "@xyflow/react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   BookOpen, Circle, ExternalLink, FileBox, FileText, Github,
   GraduationCap, MousePointerClick, Video, X,
 } from "lucide-react"
 import { GlassCard } from "@/components/GlassCard"
+import { useTheme } from "@/components/ThemeProvider"
 import type { RoadmapData, RoadmapNode, ResourceKind } from "@/lib/roadmap-types"
 
 // ---------------------------------------------------------------------------
@@ -22,74 +30,61 @@ const KIND_LABEL: Record<ResourceKind, string> = {
   video: "Video", interactive: "Interactive", pdf: "PDF (local)", topic: "Topic",
 }
 
-// Vivid hues that read on both light and dark glass. Assigned per category, stably by index.
+// Vivid hues that read on both light and dark glass, assigned per category by index.
 const CAT_HUES = ["#6f86d6", "#2dd4bf", "#d3a24a", "#b483f0", "#e06c9f", "#5bb3e6", "#8bc34a", "#f0883e"]
 
-const NODE_W = 212
-const NODE_H = 68
+const NODE_W = 210
+const NODE_H = 64
 
 // ---------------------------------------------------------------------------
-// Layout (dagre) — deterministic, so it's SSR-safe and hydrates without mismatch.
+// Custom node
 // ---------------------------------------------------------------------------
 
-type Placed = { node: RoadmapNode; x: number; y: number }
-type GroupBox = { id: string; title: string; x: number; y: number; w: number; h: number }
-type Layout = {
-  placed: Placed[]
-  groups: GroupBox[]
-  edges: { id: string; d: string }[]
-  width: number
-  height: number
+type FlowNodeData = {
+  node: RoadmapNode
+  hue: string
+  faded: boolean
+  active: boolean
 }
 
-function computeLayout(nodes: RoadmapNode[], edges: { from: string; to: string }[]): Layout {
-  const ids = new Set(nodes.map((n) => n.id))
-  // A node used as someone's `group` renders as a container box, not a chip.
-  const groupIds = new Set(nodes.map((n) => n.group).filter((g): g is string => !!g && ids.has(g)))
-  const chips = nodes.filter((n) => !groupIds.has(n.id))
-  const byId = new Map(nodes.map((n) => [n.id, n]))
+const RoadmapFlowNode = memo(function RoadmapFlowNode({ data }: NodeProps) {
+  const { node, hue, faded, active } = data as unknown as FlowNodeData
+  const Icon = KIND_ICON[node.resourceKind]
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-xl border bg-[var(--card-strong)] px-2.5 py-2 shadow-glass backdrop-blur-glass transition-all ${
+        active ? "border-accent-2 ring-2 ring-accent-2/40" : "border-card-border"
+      }`}
+      style={{ width: NODE_W, height: NODE_H, borderLeft: `3px solid ${hue}`, opacity: faded ? 0.28 : 1 }}
+    >
+      <Handle type="target" position={Position.Top} isConnectable={false} style={{ opacity: 0 }} />
+      <Icon size={16} className="shrink-0 text-text-muted" />
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 text-[0.8rem] font-medium leading-tight text-heading">{node.title}</span>
+        <span className="mt-0.5 block truncate text-[0.58rem] uppercase tracking-wide text-text">
+          {KIND_LABEL[node.resourceKind]}
+        </span>
+      </span>
+      <MiniRing value={node.progress} />
+      <Handle type="source" position={Position.Bottom} isConnectable={false} style={{ opacity: 0 }} />
+    </div>
+  )
+})
 
-  const g = new dagre.graphlib.Graph({ compound: true })
-  g.setGraph({ rankdir: "TB", nodesep: 26, ranksep: 62, marginx: 24, marginy: 24 })
-  g.setDefaultEdgeLabel(() => ({}))
+const GroupFlowNode = memo(function GroupFlowNode({ data }: NodeProps) {
+  const { title } = data as unknown as { title: string }
+  return (
+    <div className="relative h-full w-full rounded-2xl border border-dashed border-card-border bg-[var(--card)]/25">
+      <span className="absolute -top-2.5 left-3 rounded-full border border-card-border bg-[var(--card-strong)] px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-wider text-text-muted">
+        {title}
+      </span>
+    </div>
+  )
+})
 
-  for (const gid of groupIds) g.setNode(gid, { label: gid })
-  for (const n of chips) {
-    g.setNode(n.id, { width: NODE_W, height: NODE_H })
-    if (n.group && groupIds.has(n.group)) g.setParent(n.id, n.group)
-  }
-  for (const e of edges) {
-    if (g.hasNode(e.from) && g.hasNode(e.to) && !groupIds.has(e.from) && !groupIds.has(e.to)) {
-      g.setEdge(e.from, e.to)
-    }
-  }
-  dagre.layout(g)
+const NODE_TYPES = { roadmap: RoadmapFlowNode, group: GroupFlowNode }
 
-  const placed: Placed[] = chips.map((n) => {
-    const p = g.node(n.id)
-    return { node: n, x: p.x - NODE_W / 2, y: p.y - NODE_H / 2 }
-  })
-
-  const groups: GroupBox[] = [...groupIds].map((gid) => {
-    const p = g.node(gid)
-    return { id: gid, title: byId.get(gid)?.title ?? gid, x: p.x - p.width / 2, y: p.y - p.height / 2, w: p.width, h: p.height }
-  })
-
-  const edgePaths = g.edges().map((e) => {
-    const pts = g.edge(e).points as { x: number; y: number }[]
-    const d = pts.map((pt, i) => `${i === 0 ? "M" : "L"}${pt.x},${pt.y}`).join(" ")
-    return { id: `${e.v}->${e.w}`, d }
-  })
-
-  const graph = g.graph()
-  return { placed, groups, edges: edgePaths, width: graph.width ?? 0, height: graph.height ?? 0 }
-}
-
-// ---------------------------------------------------------------------------
-// Progress ring
-// ---------------------------------------------------------------------------
-
-function ProgressRing({ value, size = 26 }: { value: number; size?: number }) {
+function MiniRing({ value, size = 26 }: { value: number; size?: number }) {
   const r = (size - 4) / 2
   const c = 2 * Math.PI * r
   const done = value >= 100
@@ -102,11 +97,169 @@ function ProgressRing({ value, size = 26 }: { value: number; size?: number }) {
         strokeDasharray={c} strokeDashoffset={c * (1 - value / 100)}
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
       />
-      <text x="50%" y="52%" dominantBaseline="middle" textAnchor="middle"
-        fontSize={size * 0.3} fill="var(--text)" fontWeight="600">
+      <text x="50%" y="53%" dominantBaseline="middle" textAnchor="middle" fontSize={size * 0.3} fill="var(--text)" fontWeight="600">
         {value}
       </text>
     </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Layout (dagre) — deterministic top-down DAG.
+// ---------------------------------------------------------------------------
+
+type Positioned = { id: string; x: number; y: number }
+type GroupBox = Positioned & { title: string; w: number; h: number }
+type Layout = { positions: Map<string, Positioned>; groups: GroupBox[] }
+
+function computeLayout(nodes: RoadmapNode[], edges: { from: string; to: string }[]): Layout {
+  const ids = new Set(nodes.map((n) => n.id))
+  const groupIds = new Set(nodes.map((n) => n.group).filter((g): g is string => !!g && ids.has(g)))
+  const chips = nodes.filter((n) => !groupIds.has(n.id))
+  const byId = new Map(nodes.map((n) => [n.id, n]))
+
+  const g = new dagre.graphlib.Graph({ compound: true })
+  g.setGraph({ rankdir: "TB", nodesep: 34, ranksep: 78, marginx: 28, marginy: 28 })
+  g.setDefaultEdgeLabel(() => ({}))
+  for (const gid of groupIds) g.setNode(gid, { label: gid })
+  for (const n of chips) {
+    g.setNode(n.id, { width: NODE_W, height: NODE_H })
+    if (n.group && groupIds.has(n.group)) g.setParent(n.id, n.group)
+  }
+  for (const e of edges) {
+    if (g.hasNode(e.from) && g.hasNode(e.to) && !groupIds.has(e.from) && !groupIds.has(e.to)) g.setEdge(e.from, e.to)
+  }
+  dagre.layout(g)
+
+  const positions = new Map<string, Positioned>()
+  for (const n of chips) {
+    const p = g.node(n.id)
+    positions.set(n.id, { id: n.id, x: p.x - NODE_W / 2, y: p.y - NODE_H / 2 })
+  }
+  const groups: GroupBox[] = [...groupIds].map((gid) => {
+    const p = g.node(gid)
+    return { id: gid, title: byId.get(gid)?.title ?? gid, x: p.x - p.width / 2, y: p.y - p.height / 2, w: p.width, h: p.height }
+  })
+  return { positions, groups }
+}
+
+// ---------------------------------------------------------------------------
+// Inner flow (needs ReactFlowProvider for fitView)
+// ---------------------------------------------------------------------------
+
+function Flow({
+  visibleNodes, edges, layout, hue, selected, hovered, onSelect, onHover, colorMode,
+}: {
+  visibleNodes: RoadmapNode[]
+  edges: { from: string; to: string }[]
+  layout: Layout
+  hue: (n: RoadmapNode) => string
+  selected: string | null
+  hovered: string | null
+  onSelect: (id: string | null) => void
+  onHover: (id: string | null) => void
+  colorMode: "light" | "dark"
+}) {
+  const { fitView } = useReactFlow()
+  const signature = visibleNodes.map((n) => n.id).join(",")
+
+  // The focus set: the hovered/selected node plus its direct neighbors. Everything else dims.
+  const focusId = hovered ?? selected
+  const neighbors = useMemo(() => {
+    if (!focusId) return null
+    const set = new Set<string>([focusId])
+    for (const e of edges) {
+      if (e.from === focusId) set.add(e.to)
+      if (e.to === focusId) set.add(e.from)
+    }
+    return set
+  }, [focusId, edges])
+
+  const rfNodes: Node[] = useMemo(() => {
+    const groupNodes: Node[] = layout.groups.map((grp) => ({
+      id: grp.id,
+      type: "group",
+      position: { x: grp.x, y: grp.y },
+      data: { title: grp.title },
+      draggable: false,
+      selectable: false,
+      zIndex: 0,
+      style: { width: grp.w, height: grp.h },
+    }))
+    const chipNodes: Node[] = visibleNodes
+      .filter((n) => layout.positions.has(n.id))
+      .map((n) => {
+        const pos = layout.positions.get(n.id)!
+        return {
+          id: n.id,
+          type: "roadmap",
+          position: { x: pos.x, y: pos.y },
+          data: { node: n, hue: hue(n), faded: !!neighbors && !neighbors.has(n.id), active: selected === n.id || hovered === n.id },
+          draggable: false,
+          zIndex: 10,
+        }
+      })
+    return [...groupNodes, ...chipNodes]
+  }, [visibleNodes, layout, hue, neighbors, selected, hovered])
+
+  const rfEdges: Edge[] = useMemo(
+    () =>
+      edges.map((e) => {
+        const lit = !neighbors || (neighbors.has(e.from) && neighbors.has(e.to))
+        return {
+          id: `${e.from}->${e.to}`,
+          source: e.from,
+          target: e.to,
+          type: "smoothstep",
+          animated: lit && !!focusId,
+          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: "var(--accent-2)" },
+          style: {
+            stroke: "var(--accent-2)",
+            strokeWidth: lit && focusId ? 2 : 1.4,
+            opacity: lit ? 0.5 : 0.12,
+          },
+        }
+      }),
+    [edges, neighbors, focusId],
+  )
+
+  // Refit whenever the visible set changes.
+  useEffect(() => {
+    const t = setTimeout(() => fitView({ padding: 0.14, duration: 350 }), 60)
+    return () => clearTimeout(t)
+  }, [signature, fitView])
+
+  return (
+    <ReactFlow
+      nodes={rfNodes}
+      edges={rfEdges}
+      nodeTypes={NODE_TYPES}
+      colorMode={colorMode}
+      fitView
+      fitViewOptions={{ padding: 0.14 }}
+      minZoom={0.25}
+      maxZoom={2.4}
+      nodesDraggable={false}
+      nodesConnectable={false}
+      elementsSelectable
+      proOptions={{ hideAttribution: true }}
+      onNodeClick={(_, n) => n.type === "roadmap" && onSelect(n.id)}
+      onNodeMouseEnter={(_, n) => n.type === "roadmap" && onHover(n.id)}
+      onNodeMouseLeave={() => onHover(null)}
+      onPaneClick={() => onSelect(null)}
+    >
+      <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="rgba(130,144,176,0.35)" />
+      <MiniMap
+        pannable
+        zoomable
+        nodeStrokeWidth={2}
+        nodeColor={(n) => (n.type === "group" ? "transparent" : hue((n.data as unknown as FlowNodeData).node))}
+        maskColor={colorMode === "dark" ? "rgba(10,14,26,0.6)" : "rgba(207,214,240,0.55)"}
+        className="!bottom-3 !right-3 rounded-lg border border-card-border"
+        style={{ background: "var(--card)" }}
+      />
+      <Controls showInteractive={false} className="!bottom-3 !left-3" />
+    </ReactFlow>
   )
 }
 
@@ -115,12 +268,14 @@ function ProgressRing({ value, size = 26 }: { value: number; size?: number }) {
 // ---------------------------------------------------------------------------
 
 export function RoadmapGraph({ data }: { data: RoadmapData }) {
+  const { theme } = useTheme()
   const roadmapIds = data.roadmaps.map((r) => r.id)
-  // Physics is the headline roadmap (foundations → Lorenz); lead with it when present.
   const [roadmap, setRoadmap] = useState(roadmapIds.includes("physics") ? "physics" : roadmapIds[0] ?? "")
   const [category, setCategory] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
-  const [view, setView] = useState({ x: 0, y: 0, k: 1 })
+  const [hovered, setHovered] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   // Deep-link a node (and its roadmap) from ?node=<id> so panels are shareable.
   useEffect(() => {
@@ -133,99 +288,49 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const viewportRef = useRef<HTMLDivElement>(null)
-  const pan = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null)
-
   const meta = data.roadmaps.find((r) => r.id === roadmap)
   const allCats = meta?.categories ?? []
 
-  // Reset the category when switching roadmaps if it no longer applies.
   useEffect(() => {
     if (category && !allCats.includes(category)) setCategory(null)
   }, [roadmap, category, allCats])
 
   const visibleNodes = useMemo(
-    () =>
-      data.nodes.filter(
-        (n) => n.roadmaps.includes(roadmap) && (!category || n.categories.includes(category)),
-      ),
+    () => data.nodes.filter((n) => n.roadmaps.includes(roadmap) && (!category || n.categories.includes(category))),
     [data.nodes, roadmap, category],
   )
+  const visibleEdges = useMemo(() => {
+    const ids = new Set(visibleNodes.map((n) => n.id))
+    return data.edges.filter((e) => ids.has(e.from) && ids.has(e.to))
+  }, [visibleNodes, data.edges])
 
-  // Drop the panel if a filter hides the selected node.
   useEffect(() => {
     if (selected && !visibleNodes.some((n) => n.id === selected)) setSelected(null)
   }, [visibleNodes, selected])
 
-  const layout = useMemo(() => {
-    const ids = new Set(visibleNodes.map((n) => n.id))
-    const edges = data.edges.filter((e) => ids.has(e.from) && ids.has(e.to))
-    return computeLayout(visibleNodes, edges)
-  }, [visibleNodes, data.edges])
+  const layout = useMemo(() => computeLayout(visibleNodes, visibleEdges), [visibleNodes, visibleEdges])
 
-  // Tab/reading order: top-to-bottom, left-to-right — foundations first.
   const ordered = useMemo(
-    () => [...layout.placed].sort((a, b) => a.y - b.y || a.x - b.x).map((p) => p.node),
-    [layout],
+    () =>
+      [...visibleNodes]
+        .filter((n) => layout.positions.has(n.id))
+        .sort((a, b) => {
+          const pa = layout.positions.get(a.id)!
+          const pb = layout.positions.get(b.id)!
+          return pa.y - pb.y || pa.x - pb.x
+        }),
+    [visibleNodes, layout],
   )
 
   const selectedNode = selected ? data.nodes.find((n) => n.id === selected) ?? null : null
-
-  // Fit the graph to the viewport whenever the visible set changes.
-  const fit = useCallback(() => {
-    const el = viewportRef.current
-    if (!el || !layout.width || !layout.height) return
-    const pad = 32
-    const k = Math.min(
-      (el.clientWidth - pad) / layout.width,
-      (el.clientHeight - pad) / layout.height,
-      1.1,
-    )
-    setView({
-      k,
-      x: (el.clientWidth - layout.width * k) / 2,
-      y: Math.max(pad / 2, (el.clientHeight - layout.height * k) / 2),
-    })
-  }, [layout])
-
-  useEffect(() => {
-    fit()
-  }, [fit])
-
-  // Non-passive wheel zoom (React onWheel is passive → can't preventDefault).
-  useEffect(() => {
-    const el = viewportRef.current
-    if (!el) return
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      const rect = el.getBoundingClientRect()
-      const px = e.clientX - rect.left
-      const py = e.clientY - rect.top
-      setView((v) => {
-        const k = Math.min(2.2, Math.max(0.3, v.k * (e.deltaY < 0 ? 1.12 : 0.89)))
-        const ratio = k / v.k
-        return { k, x: px - (px - v.x) * ratio, y: py - (py - v.y) * ratio }
-      })
-    }
-    el.addEventListener("wheel", onWheel, { passive: false })
-    return () => el.removeEventListener("wheel", onWheel)
-  }, [])
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest("[data-node]")) return // let node clicks through
-    pan.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-  }
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!pan.current) return
-    setView((v) => ({ ...v, x: pan.current!.vx + (e.clientX - pan.current!.x), y: pan.current!.vy + (e.clientY - pan.current!.y) }))
-  }
-  const endPan = () => {
-    pan.current = null
-  }
-
-  const catColor = (cat: string) => CAT_HUES[Math.max(0, allCats.indexOf(cat)) % CAT_HUES.length]
-  const primaryHue = (n: RoadmapNode) => (n.categories.length ? catColor(n.categories[0]) : "var(--accent-2)")
+  const catColor = useCallback(
+    (cat: string) => CAT_HUES[Math.max(0, allCats.indexOf(cat)) % CAT_HUES.length],
+    [allCats],
+  )
+  const hue = useCallback(
+    (n: RoadmapNode) => (n.categories.length ? catColor(n.categories[0]) : "var(--accent-2)"),
+    [catColor],
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -248,9 +353,7 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
             </button>
           ))}
         </div>
-        <div className="ml-auto text-xs text-text-muted">
-          {meta ? `${meta.avgProgress}% average progress` : ""}
-        </div>
+        <div className="ml-auto text-xs text-text-muted">{meta ? `${meta.avgProgress}% average progress` : ""}</div>
       </div>
 
       {/* Category filter */}
@@ -268,104 +371,28 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        {/* Graph viewport */}
-        <GlassCard className="relative overflow-hidden p-0" style={{ height: 560 }}>
-          <div
-            ref={viewportRef}
-            className="h-full w-full touch-none select-none"
-            style={{ cursor: pan.current ? "grabbing" : "grab" }}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={endPan}
-            onPointerCancel={endPan}
-          >
-            <div
-              className="relative origin-top-left"
-              style={{
-                width: layout.width,
-                height: layout.height,
-                transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`,
-              }}
-            >
-              {/* Group boxes (behind) */}
-              {layout.groups.map((grp) => (
-                <button
-                  key={grp.id}
-                  data-node
-                  type="button"
-                  onClick={() => setSelected(grp.id)}
-                  className="absolute rounded-2xl border border-dashed border-card-border bg-[var(--card)]/40 text-left"
-                  style={{ left: grp.x, top: grp.y, width: grp.w, height: grp.h }}
-                >
-                  <span className="absolute -top-2.5 left-3 rounded-full border border-card-border bg-[var(--card-strong)] px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wider text-text-muted">
-                    {grp.title}
-                  </span>
-                </button>
-              ))}
-
-              {/* Edges */}
-              <svg
-                className="pointer-events-none absolute inset-0"
-                width={layout.width}
-                height={layout.height}
-                style={{ overflow: "visible" }}
-                aria-hidden="true"
-              >
-                <defs>
-                  <marker id="rm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M0,0 L10,5 L0,10 z" fill="var(--accent-2)" opacity="0.55" />
-                  </marker>
-                </defs>
-                {layout.edges.map((e) => (
-                  <path
-                    key={e.id}
-                    d={e.d}
-                    fill="none"
-                    stroke="var(--accent-2)"
-                    strokeOpacity={0.4}
-                    strokeWidth={1.5}
-                    markerEnd="url(#rm-arrow)"
-                  />
-                ))}
-              </svg>
-
-              {/* Node chips (topological DOM order for sane tabbing) */}
-              {ordered.map((n) => {
-                const p = layout.placed.find((pl) => pl.node.id === n.id)!
-                const Icon = KIND_ICON[n.resourceKind]
-                const isSel = selected === n.id
-                return (
-                  <button
-                    key={n.id}
-                    data-node
-                    type="button"
-                    onClick={() => setSelected(n.id)}
-                    title={n.title}
-                    className={`absolute flex items-center gap-2 rounded-xl border bg-[var(--card-strong)] px-2.5 py-2 text-left shadow-glass backdrop-blur-glass transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-2 ${
-                      isSel ? "border-accent-2" : "border-card-border"
-                    }`}
-                    style={{ left: p.x, top: p.y, width: NODE_W, height: NODE_H, borderLeftColor: primaryHue(n), borderLeftWidth: 3 }}
-                  >
-                    <Icon size={16} className="shrink-0 text-text-muted" />
-                    <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2 text-[0.8rem] font-medium leading-tight text-heading">{n.title}</span>
-                      <span className="mt-0.5 block truncate text-[0.6rem] uppercase tracking-wide text-text-muted">
-                        {KIND_LABEL[n.resourceKind]}
-                      </span>
-                    </span>
-                    <ProgressRing value={n.progress} />
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Zoom controls */}
-          <div className="absolute bottom-3 right-3 flex gap-1">
-            <ZoomBtn label="Zoom out" onClick={() => setView((v) => ({ ...v, k: Math.max(0.3, v.k * 0.85) }))}>−</ZoomBtn>
-            <ZoomBtn label="Fit" onClick={fit}>⤢</ZoomBtn>
-            <ZoomBtn label="Zoom in" onClick={() => setView((v) => ({ ...v, k: Math.min(2.2, v.k * 1.15) }))}>＋</ZoomBtn>
-          </div>
+        {/* Graph */}
+        <GlassCard strong className="roadmap-flow relative overflow-hidden p-0" style={{ height: 600 }}>
+          {mounted ? (
+            <ReactFlowProvider>
+              <Flow
+                visibleNodes={visibleNodes}
+                edges={visibleEdges}
+                layout={layout}
+                hue={hue}
+                selected={selected}
+                hovered={hovered}
+                onSelect={setSelected}
+                onHover={setHovered}
+                colorMode={theme}
+              />
+            </ReactFlowProvider>
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-text-muted">Loading graph…</div>
+          )}
+          <p className="pointer-events-none absolute left-3 top-3 z-10 text-[0.65rem] text-text-muted">
+            Drag to pan · scroll to zoom · click a node
+          </p>
         </GlassCard>
 
         {/* Detail panel */}
@@ -375,7 +402,10 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
           ) : (
             <GlassCard className="p-5 text-sm text-text-muted">
               <p>Select a node to see the path, resources, and what it unlocks.</p>
-              <p className="mt-2">Arrows point from a <span className="text-text">prerequisite</span> to what it unlocks. Filter by category to focus one thread.</p>
+              <p className="mt-2">
+                Arrows point from a <span className="text-text">prerequisite</span> to what it unlocks. Hover a node to trace its
+                thread; filter by category to focus one.
+              </p>
             </GlassCard>
           )}
         </div>
@@ -423,19 +453,6 @@ function FilterChip({ active, onClick, label, color }: { active: boolean; onClic
   )
 }
 
-function ZoomBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className="flex h-8 w-8 items-center justify-center rounded-lg border border-card-border bg-[var(--card-strong)] text-heading backdrop-blur-glass hover:text-accent-2"
-    >
-      {children}
-    </button>
-  )
-}
-
 function NodePanel({
   node, allNodes, onSelect, onClose,
 }: {
@@ -458,7 +475,6 @@ function NodePanel({
       </div>
       <h2 className="mt-1 font-display text-xl font-bold leading-tight text-heading">{node.title}</h2>
 
-      {/* Progress */}
       <div className="mt-3">
         <div className="flex items-center justify-between text-xs text-text-muted">
           <span>Progress</span>
@@ -469,7 +485,6 @@ function NodePanel({
         </div>
       </div>
 
-      {/* Categories */}
       <div className="mt-3 flex flex-wrap gap-1">
         {node.categories.map((c) => (
           <span key={c} className="rounded-full bg-[var(--track)] px-2 py-0.5 text-[0.6rem] capitalize text-text">
@@ -478,7 +493,6 @@ function NodePanel({
         ))}
       </div>
 
-      {/* Prerequisites */}
       {prereqNodes.length > 0 && (
         <div className="mt-3 text-xs">
           <div className="text-text-muted">Prerequisites</div>
@@ -497,10 +511,8 @@ function NodePanel({
         </div>
       )}
 
-      {/* Body */}
       <div className="post-body mt-4 text-sm" dangerouslySetInnerHTML={{ __html: node.html }} />
 
-      {/* Links */}
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
         {node.resourceUrl && (
           <a
