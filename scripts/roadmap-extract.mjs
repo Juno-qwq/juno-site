@@ -164,12 +164,25 @@ async function main() {
     process.exit(1)
   }
 
+  // Grouping metadata lives on each roadmap's index note (`_<id>.md`): a `domain` (the parent tab
+  // group, e.g. "AI"), a short `roadmap_label`, and a `roadmap_order`. Editing those in Obsidian
+  // reorganizes the switcher — no code change. Absent domain ⇒ the roadmap is its own top-level tab.
+  const indexMeta = new Map()
+  for (const n of notes) {
+    if (n.data.type === "index" && n.basename.startsWith("_")) indexMeta.set(n.basename.slice(1), n.data)
+  }
+
   // Roadmap + category catalogs, so the page can build its switcher/filters without re-deriving.
   const roadmapIds = [...new Set(nodes.flatMap((n) => n.roadmaps))].sort()
   const roadmaps = roadmapIds.map((id) => {
     const members = nodes.filter((n) => n.roadmaps.includes(id))
+    const m = indexMeta.get(id) ?? {}
+    const label = m.roadmap_label || (m.title ? String(m.title).replace(/\s*Roadmap$/i, "") : id)
     return {
       id,
+      label,
+      domain: m.domain ? String(m.domain) : "",
+      order: Number.isFinite(Number(m.roadmap_order)) ? Number(m.roadmap_order) : 999,
       count: members.length,
       categories: [...new Set(members.flatMap((n) => n.categories))].sort(),
       avgProgress: members.length

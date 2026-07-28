@@ -32,6 +32,12 @@ export type RoadmapEdge = { from: string; to: string }
 
 export type RoadmapMeta = {
   id: string
+  /** Display label (e.g. "LLM Systems"), from the index note's roadmap_label/title. */
+  label: string
+  /** Parent tab group (e.g. "AI"); "" ⇒ this roadmap is its own top-level tab. */
+  domain: string
+  /** Sort order in the switcher. */
+  order: number
   count: number
   categories: string[]
   avgProgress: number

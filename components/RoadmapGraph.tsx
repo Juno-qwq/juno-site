@@ -337,7 +337,7 @@ function Flow({
 export function RoadmapGraph({ data }: { data: RoadmapData }) {
   const { theme } = useTheme()
   const roadmapIds = data.roadmaps.map((r) => r.id)
-  const [roadmap, setRoadmap] = useState(roadmapIds.includes("physics") ? "physics" : roadmapIds[0] ?? "")
+  const [roadmap, setRoadmap] = useState(roadmapIds.includes("ai") ? "ai" : roadmapIds[0] ?? "")
   const [category, setCategory] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
@@ -400,24 +400,28 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Controls */}
+      {/* Domain tabs — a small set of high-level tabs (Mathematics · Physics · AI · Quant), each a
+          coarse map; the fine detail lives in each node's concept map. Ordered by the index note's
+          roadmap_order; labelled by roadmap_label. */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex rounded-xl border border-card-border bg-[var(--card)] p-1">
-          {data.roadmaps.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => {
-                setRoadmap(r.id)
-                setSelected(null)
-              }}
-              className={`rounded-lg px-3 py-1.5 text-sm capitalize transition-colors ${
-                roadmap === r.id ? "bg-[var(--card-strong)] font-medium text-heading shadow-glass" : "text-text hover:text-accent-2"
-              }`}
-            >
-              {r.id} <span className="text-text-muted">· {r.count}</span>
-            </button>
-          ))}
+        <div className="flex flex-wrap rounded-xl border border-card-border bg-[var(--card)] p-1">
+          {[...data.roadmaps]
+            .sort((a, b) => a.order - b.order)
+            .map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => {
+                  setRoadmap(r.id)
+                  setSelected(null)
+                }}
+                className={`rounded-lg px-3.5 py-1.5 text-sm transition-colors ${
+                  roadmap === r.id ? "bg-[var(--card-strong)] font-medium text-heading shadow-glass" : "text-text hover:text-accent-2"
+                }`}
+              >
+                {r.label} <span className="text-text-muted">· {r.count}</span>
+              </button>
+            ))}
         </div>
         <div className="ml-auto text-xs font-medium text-text">{meta ? `${meta.avgProgress}% average progress` : ""}</div>
       </div>
