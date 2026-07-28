@@ -8,7 +8,7 @@ import {
   Position, ReactFlow, ReactFlowProvider, useReactFlow,
   type Edge, type Node, type NodeProps,
 } from "@xyflow/react"
-import { memo, useCallback, useEffect, useMemo, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   BookOpen, Circle, ExternalLink, FileBox, FileText, Github,
   GraduationCap, MousePointerClick, Video, X,
@@ -43,19 +43,18 @@ const NODE_H = 64
 type FlowNodeData = {
   node: RoadmapNode
   hue: string
-  faded: boolean
-  active: boolean
 }
 
+// Focus/dim styling is applied IMPERATIVELY via CSS classes on the RF wrappers (see Flow's
+// applyFocus), never through React state — so hovering to trace a thread never re-renders the
+// graph (which is what made it flash). This component's props are therefore stable per filter.
 const RoadmapFlowNode = memo(function RoadmapFlowNode({ data }: NodeProps) {
-  const { node, hue, faded, active } = data as unknown as FlowNodeData
+  const { node, hue } = data as unknown as FlowNodeData
   const Icon = KIND_ICON[node.resourceKind]
   return (
     <div
-      className={`flex items-center gap-2 rounded-xl border bg-[var(--card-strong)] px-2.5 py-2 shadow-glass backdrop-blur-glass transition-all ${
-        active ? "border-accent-2 ring-2 ring-accent-2/40" : "border-card-border"
-      }`}
-      style={{ width: NODE_W, height: NODE_H, borderLeft: `3px solid ${hue}`, opacity: faded ? 0.28 : 1 }}
+      className="rf-chip flex items-center gap-2 rounded-xl border border-card-border bg-[var(--card-strong)] px-2.5 py-2 shadow-glass backdrop-blur-glass"
+      style={{ width: NODE_W, height: NODE_H, borderLeft: `3px solid ${hue}` }}
     >
       <Handle type="target" position={Position.Top} isConnectable={false} style={{ opacity: 0 }} />
       <Icon size={16} className="shrink-0 text-text-muted" />
@@ -164,22 +163,53 @@ function Flow({
   colorMode: "light" | "dark"
 }) {
   const { fitView } = useReactFlow()
-  // Hover lives HERE, not in the parent — so tracing a thread never re-renders the whole page
-  // (that, plus a fitView effect that re-fired every render, was the hover "flashing").
-  const [hovered, setHovered] = useState<string | null>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const selectedRef = useRef<string | null>(selected)
+  selectedRef.current = selected
   const signature = visibleNodes.map((n) => n.id).join(",")
+  const groupIds = useMemo(() => new Set(layout.groups.map((g) => g.id)), [layout])
 
-  // The focus set: the hovered/selected node plus its direct neighbors. Everything else dims.
-  const focusId = hovered ?? selected
-  const neighbors = useMemo(() => {
-    if (!focusId) return null
-    const set = new Set<string>([focusId])
-    for (const e of edges) {
-      if (e.from === focusId) set.add(e.to)
-      if (e.to === focusId) set.add(e.from)
-    }
-    return set
-  }, [focusId, edges])
+  const neighborsOf = useCallback(
+    (id: string) => {
+      const set = new Set<string>([id])
+      for (const e of edges) {
+        if (e.from === id) set.add(e.to)
+        if (e.to === id) set.add(e.from)
+      }
+      return set
+    },
+    [edges],
+  )
+
+  // Dim/highlight the graph WITHOUT touching React state — toggle classes on the already-mounted
+  // React Flow wrappers. This is what keeps hover flash-free: no re-render, no node remount.
+  const applyFocus = useCallback(
+    (focusId: string | null) => {
+      const root = wrapperRef.current
+      if (!root) return
+      const nb = focusId ? neighborsOf(focusId) : null
+      root.querySelectorAll<HTMLElement>(".react-flow__node").forEach((el) => {
+        const id = el.getAttribute("data-id") ?? ""
+        if (groupIds.has(id)) return
+        el.classList.toggle("rf-dim", !!nb && !nb.has(id))
+      })
+      root.querySelectorAll<HTMLElement>(".react-flow__edge").forEach((el) => {
+        const [f, t] = (el.getAttribute("data-id") ?? "").split("->")
+        const lit = !!nb && nb.has(f) && nb.has(t)
+        el.classList.toggle("rf-edge-lit", lit)
+        el.classList.toggle("rf-edge-dim", !!nb && !lit)
+      })
+    },
+    [neighborsOf, groupIds],
+  )
+
+  const markSelected = useCallback((id: string | null) => {
+    const root = wrapperRef.current
+    if (!root) return
+    root.querySelectorAll<HTMLElement>(".react-flow__node").forEach((el) => {
+      el.classList.toggle("rf-selected", el.getAttribute("data-id") === id)
+    })
+  }, [])
 
   const rfNodes: Node[] = useMemo(() => {
     const groupNodes: Node[] = layout.groups.map((grp) => ({
@@ -200,70 +230,73 @@ function Flow({
           id: n.id,
           type: "roadmap",
           position: { x: pos.x, y: pos.y },
-          data: { node: n, hue: hue(n), faded: !!neighbors && !neighbors.has(n.id), active: selected === n.id || hovered === n.id },
+          data: { node: n, hue: hue(n) },
           draggable: false,
           zIndex: 10,
         }
       })
     return [...groupNodes, ...chipNodes]
-  }, [visibleNodes, layout, hue, neighbors, selected, hovered])
+  }, [visibleNodes, layout, hue])
 
   const rfEdges: Edge[] = useMemo(
     () =>
-      edges.map((e) => {
-        const lit = !neighbors || (neighbors.has(e.from) && neighbors.has(e.to))
-        return {
-          id: `${e.from}->${e.to}`,
-          source: e.from,
-          target: e.to,
-          type: "smoothstep",
-          animated: lit && !!focusId,
-          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: "var(--accent-2)" },
-          style: {
-            stroke: "var(--accent-2)",
-            strokeWidth: lit && focusId ? 2 : 1.4,
-            opacity: lit ? 0.5 : 0.12,
-          },
-        }
-      }),
-    [edges, neighbors, focusId],
+      edges.map((e) => ({
+        id: `${e.from}->${e.to}`,
+        source: e.from,
+        target: e.to,
+        type: "smoothstep",
+        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: "var(--accent-2)" },
+        style: { stroke: "var(--accent-2)", strokeWidth: 1.5, opacity: 0.45 },
+      })),
+    [edges],
   )
 
-  // Refit ONLY when the visible set changes. `fitView` is intentionally NOT a dep: its identity
-  // changes every render, which would re-fire this on every hover and make the graph flash.
+  // Refit only when the visible set changes (NOT on every render — `fitView`'s identity churns).
   useEffect(() => {
-    const t = setTimeout(() => fitView({ padding: 0.16, duration: 350 }), 60)
+    const t = setTimeout(() => fitView({ padding: 0.16, duration: 300 }), 60)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature])
 
+  // Reapply selection highlight after the node set renders (also covers deep-linked selection).
+  useEffect(() => {
+    const r = requestAnimationFrame(() => {
+      markSelected(selected)
+      applyFocus(selected)
+    })
+    return () => cancelAnimationFrame(r)
+  }, [selected, signature, markSelected, applyFocus])
+
   return (
-    <ReactFlow
-      nodes={rfNodes}
-      edges={rfEdges}
-      nodeTypes={NODE_TYPES}
-      colorMode={colorMode}
-      fitView
-      fitViewOptions={{ padding: 0.16 }}
-      minZoom={0.25}
-      maxZoom={2.4}
-      nodesDraggable={false}
-      nodesConnectable={false}
-      elementsSelectable
-      // Trackpad-native navigation: two-finger scroll pans (any direction), pinch zooms.
-      panOnScroll
-      zoomOnScroll={false}
-      zoomOnPinch
-      panOnDrag
-      proOptions={{ hideAttribution: true }}
-      onNodeClick={(_, n) => n.type === "roadmap" && onSelect(n.id)}
-      onNodeMouseEnter={(_, n) => n.type === "roadmap" && setHovered(n.id)}
-      onNodeMouseLeave={() => setHovered(null)}
-      onPaneClick={() => onSelect(null)}
-    >
-      <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="rgba(130,144,176,0.35)" />
-      <Controls showInteractive={false} className="!bottom-3 !left-3" />
-    </ReactFlow>
+    <div ref={wrapperRef} className="h-full w-full">
+      <ReactFlow
+        nodes={rfNodes}
+        edges={rfEdges}
+        nodeTypes={NODE_TYPES}
+        colorMode={colorMode}
+        fitView
+        fitViewOptions={{ padding: 0.16 }}
+        minZoom={0.25}
+        maxZoom={2.6}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable
+        // Trackpad-native navigation: two-finger scroll pans (any direction), pinch zooms.
+        panOnScroll
+        panOnScrollSpeed={1.6}
+        zoomOnScroll={false}
+        zoomOnPinch
+        panOnDrag
+        proOptions={{ hideAttribution: true }}
+        onNodeClick={(_, n) => n.type === "roadmap" && onSelect(n.id)}
+        onNodeMouseEnter={(_, n) => n.type === "roadmap" && applyFocus(n.id)}
+        onNodeMouseLeave={() => applyFocus(selectedRef.current)}
+        onPaneClick={() => onSelect(null)}
+      >
+        <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="rgba(130,144,176,0.35)" />
+        <Controls showInteractive={false} className="!bottom-3 !left-3" />
+      </ReactFlow>
+    </div>
   )
 }
 

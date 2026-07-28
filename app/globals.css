@@ -321,11 +321,30 @@
 .roadmap-flow .react-flow__controls-button svg {
   fill: currentColor;
 }
-.roadmap-flow .react-flow__edge-path {
-  transition: stroke-opacity 0.2s ease, stroke-width 0.2s ease;
-}
 .roadmap-flow .react-flow__attribution {
   display: none;
+}
+/* Focus highlight is toggled imperatively (see RoadmapGraph's applyFocus) so hovering never
+   re-renders the graph. These are the only styles that respond to hover/selection. */
+.roadmap-flow .react-flow__node {
+  transition: opacity 0.18s ease;
+}
+.roadmap-flow .react-flow__node.rf-dim {
+  opacity: 0.26;
+}
+.roadmap-flow .react-flow__node.rf-selected .rf-chip {
+  border-color: var(--accent-2);
+  box-shadow: var(--shadow-card), 0 0 0 2px color-mix(in srgb, var(--accent-2) 45%, transparent);
+}
+.roadmap-flow .react-flow__edge-path {
+  transition: stroke-opacity 0.18s ease, stroke-width 0.18s ease;
+}
+.roadmap-flow .react-flow__edge.rf-edge-dim .react-flow__edge-path {
+  stroke-opacity: 0.1 !important;
+}
+.roadmap-flow .react-flow__edge.rf-edge-lit .react-flow__edge-path {
+  stroke-opacity: 0.7 !important;
+  stroke-width: 2 !important;
 }
 /* Selection/hover outline handled in the node component; kill RF's default. */
 .roadmap-flow .react-flow__node:focus,
