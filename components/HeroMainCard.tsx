@@ -76,7 +76,7 @@ export function HeroMainCard() {
       sparkle={SPARKLE}
       poster="var(--hero-poster)"
       scrimClassName="hero-scrim"
-      className="min-h-[460px] border border-card-border shadow-glass md:min-h-[520px]"
+      className="min-h-[360px] border border-card-border shadow-glass md:min-h-[420px]"
     >
       <div className="px-7 py-9 md:px-12 md:py-12">
         <p className="text-xs uppercase tracking-[0.28em] text-accent-2">Welcome back, Juno</p>

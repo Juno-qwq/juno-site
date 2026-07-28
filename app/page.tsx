@@ -1,4 +1,3 @@
-import { Footer } from "@/components/Footer"
 import { HeroMainCard } from "@/components/HeroMainCard"
 import { Calendar } from "@/components/cards/Calendar"
 import { CurrentlyLearning } from "@/components/cards/CurrentlyLearning"
@@ -16,32 +15,30 @@ export default function DashboardPage() {
   const recent = getRecentPosts(3)
 
   return (
-    <main id="main-content" className="px-4 pb-6 pt-16 lg:px-8 lg:pt-6">
+    <main id="main-content" className="px-4 pb-4 pt-14 lg:px-6 lg:pt-4">
       {/* Hero + main column, with the System/Calendar/NowPlaying rail on xl+. */}
-        <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
-          <div className="min-w-0 space-y-6">
-            <HeroMainCard />
-            <div className="grid gap-6 md:grid-cols-2">
-              <RecentPosts posts={recent} />
-              <CurrentlyLearning />
-            </div>
-            <FeaturedProjects />
+      <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+        <div className="min-w-0 space-y-4">
+          <HeroMainCard />
+          <div className="grid gap-4 md:grid-cols-2">
+            <RecentPosts posts={recent} />
+            <CurrentlyLearning />
           </div>
-          <div className="space-y-6">
-            <SystemOverview />
-            <Calendar />
-            <NowPlaying />
-          </div>
+          <FeaturedProjects />
         </div>
-
-        {/* Graph + reminder + newsletter. */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <TopicsGraph />
-          <DailyReminder />
-          <StayInLoop />
+        <div className="space-y-4">
+          <SystemOverview />
+          <Calendar />
+          <NowPlaying />
         </div>
+      </div>
 
-      <Footer />
+      {/* Graph + reminder + newsletter. */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <TopicsGraph />
+        <DailyReminder />
+        <StayInLoop />
+      </div>
     </main>
   )
 }

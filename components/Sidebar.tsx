@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { ThemeToggle } from "./ThemeToggle"
 import { Sparkline } from "./Sparkline"
-import { socials, tagline, totalVisits, visitsSeries } from "@/lib/site"
+import { socials, totalVisits, visitsSeries } from "@/lib/site"
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ size?: number }>; external?: boolean }
 
@@ -45,7 +45,7 @@ function NavLinks({ pathname, collapsed, onNavigate }: { pathname: string; colla
       {NAV.map(({ label, href, icon: Icon, external }) => {
         const active = !external && (href === "/" ? pathname === "/" : pathname.startsWith(href))
         // `collapsed` only applies at lg+ — the mobile drawer always shows full labels.
-        const cls = `flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors ${
+        const cls = `flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors ${
           collapsed ? "lg:justify-center lg:px-0" : ""
         } ${
           active
@@ -82,13 +82,15 @@ function SidebarContent({
 }) {
   const hideWhenCollapsed = collapsed ? "lg:hidden" : ""
   return (
-    <div className={`flex h-full flex-col gap-5 overflow-y-auto overflow-x-hidden ${collapsed ? "lg:px-2" : ""} p-5`}>
+    // Compact + non-scrolling: everything fits one screen. Nav is the flexible middle; identity is
+    // pinned at top and socials/visits/theme at the bottom.
+    <div className={`flex h-full flex-col gap-3 overflow-hidden ${collapsed ? "lg:px-2" : ""} p-4`}>
       {/* Collapse toggle — desktop only */}
       <button
         type="button"
         onClick={onToggleCollapse}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className={`hidden text-text-muted transition-colors hover:text-accent-2 lg:flex ${
+        className={`hidden shrink-0 text-text-muted transition-colors hover:text-accent-2 lg:flex ${
           collapsed ? "lg:justify-center" : "lg:justify-end"
         }`}
       >
@@ -96,53 +98,56 @@ function SidebarContent({
       </button>
 
       {/* Identity */}
-      <div className="flex flex-col items-center text-center">
+      <div className="flex shrink-0 flex-col items-center text-center">
         <div
-          className={`rounded-full bg-cover bg-center transition-all ${collapsed ? "h-24 w-24 lg:h-11 lg:w-11" : "h-24 w-24"}`}
+          className={`rounded-full bg-cover bg-center transition-all ${collapsed ? "h-16 w-16 lg:h-10 lg:w-10" : "h-16 w-16"}`}
           style={{
             backgroundImage: "var(--avatar-image)",
-            boxShadow: "0 0 0 2px var(--card-border), 0 0 28px var(--glow)",
+            boxShadow: "0 0 0 2px var(--card-border), 0 0 22px var(--glow)",
           }}
           aria-label="Juno avatar"
           role="img"
         />
-        <div className={`mt-3 font-display text-2xl font-bold tracking-wide text-heading ${hideWhenCollapsed}`}>JUNO</div>
-        <div className={`text-xs uppercase tracking-[0.2em] text-accent-2 ${hideWhenCollapsed}`}>Digital Garden</div>
-        <p className={`mt-2 text-xs text-text-muted ${hideWhenCollapsed}`}>{tagline}</p>
+        <div className={`mt-2 font-display text-xl font-bold tracking-wide text-heading ${hideWhenCollapsed}`}>JUNO</div>
+        <div className={`text-[0.6rem] uppercase tracking-[0.2em] text-accent-2 ${hideWhenCollapsed}`}>Digital Garden</div>
       </div>
 
       <NavLinks pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} />
 
-      {/* Socials */}
-      <div className={`flex justify-center gap-2 ${hideWhenCollapsed}`}>
-        {socials.map(({ label, href, icon }) => {
-          const Icon = SOCIAL_ICON[icon]
-          return (
-            <a
-              key={label}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={label}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-card-border bg-card text-text transition-colors hover:text-accent-2"
-            >
-              <Icon size={16} />
-            </a>
-          )
-        })}
-      </div>
+      <div className="mt-auto flex flex-col gap-3">
+        {/* Socials */}
+        <div className={`flex justify-center gap-2 ${hideWhenCollapsed}`}>
+          {socials.map(({ label, href, icon }) => {
+            const Icon = SOCIAL_ICON[icon]
+            return (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-card-border bg-card text-text transition-colors hover:text-accent-2"
+              >
+                <Icon size={15} />
+              </a>
+            )
+          })}
+        </div>
 
-      {/* Total Visits */}
-      <div className={`rounded-xl border border-card-border bg-[var(--card)] p-4 ${hideWhenCollapsed}`}>
-        <div className="text-[0.7rem] uppercase tracking-wider text-text-muted">Total Visits</div>
-        <div className="mt-1 text-2xl font-bold text-heading">{totalVisits.toLocaleString()}</div>
-        <Sparkline data={visitsSeries} width={200} height={34} fill className="mt-2 w-full" />
-        {/* TODO(Phase 2): real counter via Cloudflare Worker + KV. */}
-      </div>
+        {/* Total Visits */}
+        <div className={`rounded-xl border border-card-border bg-[var(--card)] px-3 py-2.5 ${hideWhenCollapsed}`}>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[0.62rem] uppercase tracking-wider text-text-muted">Total Visits</span>
+            <span className="text-base font-bold text-heading">{totalVisits.toLocaleString()}</span>
+          </div>
+          <Sparkline data={visitsSeries} width={200} height={24} fill className="mt-1.5 w-full" />
+          {/* TODO(Phase 2): real counter via Cloudflare Worker + KV. */}
+        </div>
 
-      <div className={`mt-auto flex items-center pt-2 ${collapsed ? "lg:justify-center" : "justify-between"}`}>
-        <span className={`text-xs text-text-muted ${hideWhenCollapsed}`}>Theme</span>
-        <ThemeToggle />
+        <div className={`flex items-center ${collapsed ? "lg:justify-center" : "justify-between"}`}>
+          <span className={`text-xs text-text-muted ${hideWhenCollapsed}`}>Theme</span>
+          <ThemeToggle />
+        </div>
       </div>
     </div>
   )
