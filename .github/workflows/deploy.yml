@@ -1,20 +1,18 @@
 # Unified build & deploy — the whole publishing pipeline lives here (DESIGN.md §7).
 #
-# Three repos, ONE static artifact, ONE Cloudflare Pages project:
-#   juno-site  → /          (Next.js static export)
-#   juno-garden→ /garden    (Quartz 4)
-#   juno-vault → the content for both (private; never deployed as-is)
+# Two repos, ONE static artifact, ONE Cloudflare Pages project:
+#   juno-site  → everything, incl. the garden at /garden (native Next.js static export)
+#   juno-vault → the content (private; never deployed as-is)
 #
-# Same origin is the point: it is what lets one theme toggle govern both surfaces via a
-# shared localStorage key (DESIGN.md §8). Splitting this into two Pages projects would
-# break that, so the builds are deliberately joined.
+# The garden used to be a separate Quartz build merged in; it is now rendered natively by the
+# Next site (scripts/garden-extract.mjs in prebuild), so there's one build and one design system.
 name: Deploy
 
 on:
   push:
     branches: [main]
-  # juno-vault and juno-garden can't run this workflow directly (it lives here), so they
-  # ping it instead — see each repo's .github/workflows/dispatch.yml.
+  # juno-vault can't run this workflow directly (it lives here), so it pings it instead — see
+  # juno-vault/.github/workflows/dispatch.yml.
   repository_dispatch:
     types: [vault-updated, garden-updated]
   workflow_dispatch:
@@ -36,15 +34,9 @@ jobs:
         with:
           path: juno-site
 
-      - name: Checkout juno-garden
-        uses: actions/checkout@v4
-        with:
-          repository: Juno-qwq/juno-garden
-          path: juno-garden
-
       # The vault is PRIVATE — the default GITHUB_TOKEN is scoped to this repo only, so a
       # PAT with read access is required. This checkout is the only place vault content
-      # touches the runner; the filter step below decides what may leave it.
+      # touches the runner; the extract steps below decide what may leave it.
       - name: Checkout juno-vault (private)
         uses: actions/checkout@v4
         with:
@@ -56,60 +48,34 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install juno-garden deps
-        working-directory: juno-garden
-        run: npm ci
-
       - name: Install juno-site deps
         working-directory: juno-site
         run: npm ci
 
-      # --- The privacy firewall -------------------------------------------------------
-      # Both of the next two steps go through juno-vault/_system/scripts/vault-filter.mjs,
-      # the single implementation of the publish gates. Nothing without `publish: true`
-      # reaches the garden; nothing without `status: published` reaches the blog.
-
-      - name: Filter vault → garden content
-        working-directory: juno-garden
-        env:
-          VAULT_PATH: ${{ github.workspace }}/juno-vault
-        run: npm run sync-local
-
-      - name: Build garden (Quartz)
-        working-directory: juno-garden
-        run: npx quartz build
-
-      # extract-blog runs automatically via juno-site's `prebuild` hook. It fails the build
-      # on a frontmatter schema violation rather than shipping a mangled post.
-      - name: Build site (Next.js static export)
+      # The prebuild hook runs extract-blog + roadmap-extract + garden-extract, all through
+      # juno-vault/_system/scripts/vault-filter.mjs — the single privacy firewall (publish: true
+      # only, _private/ hard-excluded, PDF/local links stripped). Schema violations fail the build.
+      - name: Build site (Next.js static export, incl. /garden)
         working-directory: juno-site
         env:
           VAULT_PATH: ${{ github.workspace }}/juno-vault
           NEXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL || 'https://juno.dev' }}
         run: npm run build
 
-      - name: Merge garden into site artifact
-        run: |
-          set -euo pipefail
-          rm -rf juno-site/out/garden
-          mkdir -p juno-site/out/garden
-          cp -r juno-garden/public/. juno-site/out/garden/
-          test -f juno-site/out/index.html
-          test -f juno-site/out/garden/index.html
-          echo "Merged artifact: $(find juno-site/out -type f | wc -l) files"
-
       # Last line of defence. If a private note ever reaches the artifact, fail here rather
       # than publish it — a failed deploy is recoverable, a leak is not.
       - name: Verify no private content in artifact
         run: |
           set -euo pipefail
+          test -f juno-site/out/index.html
+          test -f juno-site/out/garden/index.html
           if find juno-site/out -iname '*_private*' -o -ipath '*_private*' | grep -q .; then
             echo "::error::_private content present in the deploy artifact"; exit 1
           fi
-          if [ -d juno-site/out/garden/Blog ]; then
-            echo "::error::vault Blog/ leaked into the garden output"; exit 1
+          if grep -rIl -e 'libgen' -e '\.pdf' juno-site/out/garden juno-site/out/roadmap 2>/dev/null | grep -q .; then
+            echo "::error::a PDF/libgen reference leaked into the garden or roadmap"; exit 1
           fi
-          echo "Privacy check passed."
+          echo "Privacy check passed. Artifact: $(find juno-site/out -type f | wc -l) files"
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
