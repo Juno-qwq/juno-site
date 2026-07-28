@@ -36,10 +36,6 @@ const CAT_HUES = ["#6f86d6", "#2dd4bf", "#d3a24a", "#b483f0", "#e06c9f", "#5bb3e
 const NODE_W = 210
 const NODE_H = 64
 
-// The graph card and the detail panel share this height so the panel never stretches the page —
-// its body paginates instead (see NodePanel).
-const PANEL_H = 620
-
 // Pinch-zoom sensitivity for our custom handler. d3-zoom's built-in pinch is ~0.0139; higher =
 // faster. React Flow exposes no pinch-speed prop, so we drive zoom ourselves (see Flow's wheel
 // effect) to make the gesture feel responsive.
@@ -163,7 +159,7 @@ function computeLayout(nodes: RoadmapNode[], edges: { from: string; to: string }
 // ---------------------------------------------------------------------------
 
 function Flow({
-  visibleNodes, edges, layout, hue, selected, onSelect, colorMode,
+  visibleNodes, edges, layout, hue, selected, onSelect, colorMode, panelOpen,
 }: {
   visibleNodes: RoadmapNode[]
   edges: { from: string; to: string }[]
@@ -172,6 +168,7 @@ function Flow({
   selected: string | null
   onSelect: (id: string | null) => void
   colorMode: "light" | "dark"
+  panelOpen: boolean
 }) {
   const { fitView, getViewport, setViewport } = useReactFlow()
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -263,11 +260,12 @@ function Flow({
   )
 
   // Refit only when the visible set changes (NOT on every render — `fitView`'s identity churns).
+  // Refit when the visible set changes, and when the panel opens/closes (the graph's width shifts).
   useEffect(() => {
-    const t = setTimeout(() => fitView({ padding: 0.16, duration: 300 }), 60)
+    const t = setTimeout(() => fitView({ padding: 0.16, duration: 300 }), 80)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature])
+  }, [signature, panelOpen])
 
   // Custom pinch zoom. A trackpad pinch arrives as ctrl+wheel; React Flow's built-in pinch speed
   // isn't configurable and feels slow, so we intercept ctrl+wheel and zoom (centered on the
@@ -342,7 +340,6 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
   const { theme } = useTheme()
   const roadmapIds = data.roadmaps.map((r) => r.id)
   const [roadmap, setRoadmap] = useState(roadmapIds.includes("ai") ? "ai" : roadmapIds[0] ?? "")
-  const [category, setCategory] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -359,15 +356,12 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
   }, [])
 
   const meta = data.roadmaps.find((r) => r.id === roadmap)
+  // Kept for consistent per-category node colours (no filter UI at this altitude).
   const allCats = meta?.categories ?? []
 
-  useEffect(() => {
-    if (category && !allCats.includes(category)) setCategory(null)
-  }, [roadmap, category, allCats])
-
   const visibleNodes = useMemo(
-    () => data.nodes.filter((n) => n.roadmaps.includes(roadmap) && (!category || n.categories.includes(category))),
-    [data.nodes, roadmap, category],
+    () => data.nodes.filter((n) => n.roadmaps.includes(roadmap)),
+    [data.nodes, roadmap],
   )
   const visibleEdges = useMemo(() => {
     const ids = new Set(visibleNodes.map((n) => n.id))
@@ -403,12 +397,11 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
   )
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Domain tabs — a small set of high-level tabs (Mathematics · Physics · AI · Quant), each a
-          coarse map; the fine detail lives in each node's concept map. Ordered by the index note's
-          roadmap_order; labelled by roadmap_label. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap rounded-xl border border-card-border bg-[var(--card)] p-1">
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      {/* Domain tabs — a small high-level set (Mathematics · Physics · AI · Quant). No preamble, no
+          filters: the graph is the point, and it fills the space below. */}
+      <div className="shrink-0">
+        <div className="inline-flex flex-wrap rounded-xl border border-card-border bg-[var(--card)] p-1">
           {[...data.roadmaps]
             .sort((a, b) => a.order - b.order)
             .map((r) => (
@@ -427,26 +420,17 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
               </button>
             ))}
         </div>
-        <div className="ml-auto text-xs font-medium text-text">{meta ? `${meta.avgProgress}% average progress` : ""}</div>
       </div>
 
-      {/* Category filter */}
-      <div className="flex flex-wrap gap-1.5">
-        <FilterChip active={category === null} onClick={() => setCategory(null)} label="All" />
-        {allCats.map((c) => (
-          <FilterChip
-            key={c}
-            active={category === c}
-            onClick={() => setCategory((cur) => (cur === c ? null : c))}
-            label={c}
-            color={catColor(c)}
-          />
-        ))}
-      </div>
-
-      {/* Graph gets the full width until a node is selected; then a panel opens beside it. */}
-      <div className={selectedNode ? "grid gap-4 lg:grid-cols-[1fr_340px]" : ""}>
-        <GlassCard strong className="roadmap-flow relative overflow-hidden p-0" style={{ height: PANEL_H }}>
+      {/* Graph fills the remaining height; a node opens a panel beside it (below it on mobile). */}
+      <div
+        className={`min-h-0 flex-1 ${
+          selectedNode
+            ? "grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-3 lg:grid-cols-[1fr_360px] lg:grid-rows-1"
+            : ""
+        }`}
+      >
+        <GlassCard strong className="roadmap-flow relative h-full overflow-hidden p-0">
           {mounted ? (
             <ReactFlowProvider>
               <Flow
@@ -457,6 +441,7 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
                 selected={selected}
                 onSelect={setSelected}
                 colorMode={theme}
+                panelOpen={!!selectedNode}
               />
             </ReactFlowProvider>
           ) : (
@@ -468,14 +453,14 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
         </GlassCard>
 
         {selectedNode && (
-          <div className="min-w-0">
+          <div className="min-h-0 min-w-0">
             <NodePanel key={selectedNode.id} node={selectedNode} allNodes={data.nodes} onSelect={setSelected} onClose={() => setSelected(null)} />
           </div>
         )}
       </div>
 
       {/* Accessible fallback: the same graph as a keyboard-navigable prerequisite list. */}
-      <details className="group">
+      <details className="group shrink-0">
         <summary className="cursor-pointer text-sm text-accent-2">List view (accessible)</summary>
         <nav aria-label={`${roadmap} roadmap, ordered by prerequisite`} className="mt-3">
           <ol className="space-y-2">
@@ -500,21 +485,6 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
 // ---------------------------------------------------------------------------
 // Bits
 // ---------------------------------------------------------------------------
-
-function FilterChip({ active, onClick, label, color }: { active: boolean; onClick: () => void; label: string; color?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex min-h-[28px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs capitalize transition-colors ${
-        active ? "border-accent-2 bg-[var(--card-strong)] text-heading" : "border-card-border bg-[var(--card)] text-text-muted hover:text-accent-2"
-      }`}
-    >
-      {color && <span className="h-2 w-2 rounded-full" style={{ background: color }} />}
-      {label.replace(/-/g, " ")}
-    </button>
-  )
-}
 
 function NodePanel({
   node, allNodes, onSelect, onClose,
@@ -560,7 +530,7 @@ function NodePanel({
   }
 
   return (
-    <GlassCard glow className="flex flex-col overflow-hidden p-0" style={{ height: PANEL_H }}>
+    <GlassCard glow className="flex h-full flex-col overflow-hidden p-0">
       {/* Fixed header */}
       <div className="shrink-0 border-b border-card-border p-4 pb-3">
         <div className="flex items-start justify-between gap-2">

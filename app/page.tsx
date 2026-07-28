@@ -1,6 +1,5 @@
 import { Footer } from "@/components/Footer"
 import { HeroMainCard } from "@/components/HeroMainCard"
-import { Sidebar } from "@/components/Sidebar"
 import { Calendar } from "@/components/cards/Calendar"
 import { CurrentlyLearning } from "@/components/cards/CurrentlyLearning"
 import { DailyReminder } from "@/components/cards/DailyReminder"
@@ -17,10 +16,8 @@ export default function DashboardPage() {
   const recent = getRecentPosts(3)
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main id="main-content" className="min-w-0 flex-1 px-4 pb-6 pt-16 lg:px-8 lg:pt-6">
-        {/* Hero + main column, with the System/Calendar/NowPlaying rail on xl+. */}
+    <main id="main-content" className="px-4 pb-6 pt-16 lg:px-8 lg:pt-6">
+      {/* Hero + main column, with the System/Calendar/NowPlaying rail on xl+. */}
         <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
           <div className="min-w-0 space-y-6">
             <HeroMainCard />
@@ -44,8 +41,7 @@ export default function DashboardPage() {
           <StayInLoop />
         </div>
 
-        <Footer />
-      </main>
-    </div>
+      <Footer />
+    </main>
   )
 }

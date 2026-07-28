@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import localFont from "next/font/local"
 import "./globals.css"
 import { SiteBackdrop } from "@/components/SiteBackdrop"
+import { Sidebar } from "@/components/Sidebar"
 import { ThemeProvider } from "@/components/ThemeProvider"
 import { site } from "@/lib/site"
 
@@ -93,7 +94,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <SiteBackdrop />
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {/* One shell for every page: the sidebar is the only nav (no top bar), so it stays put
+              as you move between Home, Roadmap, Blog, … */}
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <div className="min-w-0 flex-1">{children}</div>
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   )

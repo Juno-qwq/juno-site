@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { GlassCard } from "@/components/GlassCard"
-import { SiteHeader } from "@/components/SiteHeader"
 import { Footer } from "@/components/Footer"
 import { getAllPosts, getPost } from "@/lib/blog"
 import { formatLongDate } from "@/lib/posts"
@@ -51,9 +50,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   if (!post) notFound()
 
   return (
-    <>
-      <SiteHeader />
-      <main id="main-content" className="mx-auto max-w-3xl px-5 pb-24 pt-6">
+    <main id="main-content" className="mx-auto max-w-3xl px-5 pb-24 pt-16 lg:pt-6">
         <Link href="/blog/" className="text-xs text-accent-2 hover:underline">
           ← All posts
         </Link>
@@ -100,7 +97,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         </GlassCard>
 
         <Footer />
-      </main>
-    </>
+    </main>
   )
 }

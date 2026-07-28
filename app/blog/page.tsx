@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { GlassCard } from "@/components/GlassCard"
 import { PostCard } from "@/components/PostCard"
-import { SiteHeader } from "@/components/SiteHeader"
 import { Footer } from "@/components/Footer"
 import { getAllPosts } from "@/lib/blog"
 
@@ -17,9 +16,7 @@ export default function BlogPage() {
   const series = [...new Set(posts.map((p) => p.series).filter(Boolean))]
 
   return (
-    <>
-      <SiteHeader />
-      <main id="main-content" className="mx-auto max-w-4xl px-5 pb-24 pt-6">
+    <main id="main-content" className="mx-auto max-w-4xl px-5 pb-24 pt-16 lg:pt-6">
         <GlassCard className="p-8 md:p-10" glow>
           <p className="text-xs uppercase tracking-[0.25em] text-accent-2">Writing</p>
           <h1 className="mt-2 text-4xl font-bold text-gradient md:text-5xl">Blog</h1>
@@ -42,7 +39,6 @@ export default function BlogPage() {
         </div>
 
         <Footer />
-      </main>
-    </>
+    </main>
   )
 }
