@@ -79,19 +79,6 @@
     pointer-events: none;
     will-change: transform;
   }
-  /* Spinning halo ring — light mode only (hidden in dark, see gating below). */
-  .site-halo {
-    position: fixed;
-    inset: 0;
-    z-index: -2;
-    background-image: url("/img/foreground_halo_light.png");
-    background-size: cover;
-    background-position: center center;
-    background-repeat: no-repeat;
-    pointer-events: none;
-    will-change: transform;
-  }
-
   .site-sparkles {
     position: fixed;
     inset: 0;
@@ -127,11 +114,6 @@
 }
 :root[data-theme="dark"] .hero-layer--dark {
   display: block;
-}
-
-/* The spinning halo is a light-mode-only layer. */
-:root[data-theme="dark"] .site-halo {
-  display: none;
 }
 
 /* Now Playing equalizer bars (dynamic per-bar animation-delay set inline). */

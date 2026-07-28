@@ -4,11 +4,11 @@ import "@xyflow/react/dist/style.css"
 
 import dagre from "@dagrejs/dagre"
 import {
-  Background, BackgroundVariant, Controls, Handle, MarkerType, MiniMap,
+  Background, BackgroundVariant, Controls, Handle, MarkerType,
   Position, ReactFlow, ReactFlowProvider, useReactFlow,
   type Edge, type Node, type NodeProps,
 } from "@xyflow/react"
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import {
   BookOpen, Circle, ExternalLink, FileBox, FileText, Github,
   GraduationCap, MousePointerClick, Video, X,
@@ -74,15 +74,20 @@ const RoadmapFlowNode = memo(function RoadmapFlowNode({ data }: NodeProps) {
 const GroupFlowNode = memo(function GroupFlowNode({ data }: NodeProps) {
   const { title } = data as unknown as { title: string }
   return (
-    <div className="relative h-full w-full rounded-2xl border border-dashed border-card-border bg-[var(--card)]/25">
-      <span className="absolute -top-2.5 left-3 rounded-full border border-card-border bg-[var(--card-strong)] px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-wider text-text-muted">
+    <div
+      className="relative h-full w-full rounded-2xl border"
+      style={{ borderColor: "var(--accent-2)", borderStyle: "dashed", borderWidth: 1.5, background: "rgba(111,134,214,0.07)", opacity: 0.9 }}
+    >
+      <span className="absolute -top-2.5 left-3 rounded-full border border-card-border bg-[var(--card-strong)] px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-wider text-text">
         {title}
       </span>
     </div>
   )
 })
 
-const NODE_TYPES = { roadmap: RoadmapFlowNode, group: GroupFlowNode }
+// NB: the type is "cluster", not "group" — React Flow ships a built-in "group" type whose
+// default CSS (white fill, dark border) would override ours and look wrong in light mode.
+const NODE_TYPES = { roadmap: RoadmapFlowNode, cluster: GroupFlowNode }
 
 function MiniRing({ value, size = 26 }: { value: number; size?: number }) {
   const r = (size - 4) / 2
@@ -148,19 +153,20 @@ function computeLayout(nodes: RoadmapNode[], edges: { from: string; to: string }
 // ---------------------------------------------------------------------------
 
 function Flow({
-  visibleNodes, edges, layout, hue, selected, hovered, onSelect, onHover, colorMode,
+  visibleNodes, edges, layout, hue, selected, onSelect, colorMode,
 }: {
   visibleNodes: RoadmapNode[]
   edges: { from: string; to: string }[]
   layout: Layout
   hue: (n: RoadmapNode) => string
   selected: string | null
-  hovered: string | null
   onSelect: (id: string | null) => void
-  onHover: (id: string | null) => void
   colorMode: "light" | "dark"
 }) {
   const { fitView } = useReactFlow()
+  // Hover lives HERE, not in the parent — so tracing a thread never re-renders the whole page
+  // (that, plus a fitView effect that re-fired every render, was the hover "flashing").
+  const [hovered, setHovered] = useState<string | null>(null)
   const signature = visibleNodes.map((n) => n.id).join(",")
 
   // The focus set: the hovered/selected node plus its direct neighbors. Everything else dims.
@@ -178,7 +184,7 @@ function Flow({
   const rfNodes: Node[] = useMemo(() => {
     const groupNodes: Node[] = layout.groups.map((grp) => ({
       id: grp.id,
-      type: "group",
+      type: "cluster",
       position: { x: grp.x, y: grp.y },
       data: { title: grp.title },
       draggable: false,
@@ -223,11 +229,13 @@ function Flow({
     [edges, neighbors, focusId],
   )
 
-  // Refit whenever the visible set changes.
+  // Refit ONLY when the visible set changes. `fitView` is intentionally NOT a dep: its identity
+  // changes every render, which would re-fire this on every hover and make the graph flash.
   useEffect(() => {
-    const t = setTimeout(() => fitView({ padding: 0.14, duration: 350 }), 60)
+    const t = setTimeout(() => fitView({ padding: 0.16, duration: 350 }), 60)
     return () => clearTimeout(t)
-  }, [signature, fitView])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature])
 
   return (
     <ReactFlow
@@ -236,28 +244,24 @@ function Flow({
       nodeTypes={NODE_TYPES}
       colorMode={colorMode}
       fitView
-      fitViewOptions={{ padding: 0.14 }}
+      fitViewOptions={{ padding: 0.16 }}
       minZoom={0.25}
       maxZoom={2.4}
       nodesDraggable={false}
       nodesConnectable={false}
       elementsSelectable
+      // Trackpad-native navigation: two-finger scroll pans (any direction), pinch zooms.
+      panOnScroll
+      zoomOnScroll={false}
+      zoomOnPinch
+      panOnDrag
       proOptions={{ hideAttribution: true }}
       onNodeClick={(_, n) => n.type === "roadmap" && onSelect(n.id)}
-      onNodeMouseEnter={(_, n) => n.type === "roadmap" && onHover(n.id)}
-      onNodeMouseLeave={() => onHover(null)}
+      onNodeMouseEnter={(_, n) => n.type === "roadmap" && setHovered(n.id)}
+      onNodeMouseLeave={() => setHovered(null)}
       onPaneClick={() => onSelect(null)}
     >
       <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="rgba(130,144,176,0.35)" />
-      <MiniMap
-        pannable
-        zoomable
-        nodeStrokeWidth={2}
-        nodeColor={(n) => (n.type === "group" ? "transparent" : hue((n.data as unknown as FlowNodeData).node))}
-        maskColor={colorMode === "dark" ? "rgba(10,14,26,0.6)" : "rgba(207,214,240,0.55)"}
-        className="!bottom-3 !right-3 rounded-lg border border-card-border"
-        style={{ background: "var(--card)" }}
-      />
       <Controls showInteractive={false} className="!bottom-3 !left-3" />
     </ReactFlow>
   )
@@ -273,7 +277,6 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
   const [roadmap, setRoadmap] = useState(roadmapIds.includes("physics") ? "physics" : roadmapIds[0] ?? "")
   const [category, setCategory] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
-  const [hovered, setHovered] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
@@ -353,7 +356,7 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
             </button>
           ))}
         </div>
-        <div className="ml-auto text-xs text-text-muted">{meta ? `${meta.avgProgress}% average progress` : ""}</div>
+        <div className="ml-auto text-xs font-medium text-text">{meta ? `${meta.avgProgress}% average progress` : ""}</div>
       </div>
 
       {/* Category filter */}
@@ -370,9 +373,9 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        {/* Graph */}
-        <GlassCard strong className="roadmap-flow relative overflow-hidden p-0" style={{ height: 600 }}>
+      {/* Graph gets the full width until a node is selected; then a panel opens beside it. */}
+      <div className={selectedNode ? "grid gap-4 lg:grid-cols-[1fr_340px]" : ""}>
+        <GlassCard strong className="roadmap-flow relative overflow-hidden p-0" style={{ height: 620 }}>
           {mounted ? (
             <ReactFlowProvider>
               <Flow
@@ -381,9 +384,7 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
                 layout={layout}
                 hue={hue}
                 selected={selected}
-                hovered={hovered}
                 onSelect={setSelected}
-                onHover={setHovered}
                 colorMode={theme}
               />
             </ReactFlowProvider>
@@ -391,24 +392,15 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
             <div className="flex h-full items-center justify-center text-sm text-text-muted">Loading graph…</div>
           )}
           <p className="pointer-events-none absolute left-3 top-3 z-10 text-[0.65rem] text-text-muted">
-            Drag to pan · scroll to zoom · click a node
+            Two-finger scroll to pan · pinch to zoom · click a node
           </p>
         </GlassCard>
 
-        {/* Detail panel */}
-        <div className="min-w-0">
-          {selectedNode ? (
+        {selectedNode && (
+          <div className="min-w-0">
             <NodePanel node={selectedNode} allNodes={data.nodes} onSelect={setSelected} onClose={() => setSelected(null)} />
-          ) : (
-            <GlassCard className="p-5 text-sm text-text-muted">
-              <p>Select a node to see the path, resources, and what it unlocks.</p>
-              <p className="mt-2">
-                Arrows point from a <span className="text-text">prerequisite</span> to what it unlocks. Hover a node to trace its
-                thread; filter by category to focus one.
-              </p>
-            </GlassCard>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Accessible fallback: the same graph as a keyboard-navigable prerequisite list. */}
@@ -419,7 +411,7 @@ export function RoadmapGraph({ data }: { data: RoadmapData }) {
             {ordered.map((n) => (
               <li key={n.id} className="text-sm">
                 <a href={n.route} className="font-medium text-heading hover:text-accent-2">{n.title}</a>
-                <span className="text-text-muted">
+                <span className="text-text">
                   {" "}— {KIND_LABEL[n.resourceKind]}, {n.progress}% done
                   {n.prerequisites.length > 0 && (
                     <> · needs {n.prerequisites.map((p) => data.nodes.find((x) => x.id === p)?.title ?? p).join(", ")}</>
