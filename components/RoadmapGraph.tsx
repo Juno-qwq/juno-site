@@ -11,7 +11,7 @@ import {
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   BookOpen, Circle, ExternalLink, FileBox, FileText, Github,
-  GraduationCap, MousePointerClick, Video, X,
+  GraduationCap, MousePointerClick, Video, Waypoints, X,
 } from "lucide-react"
 import { GlassCard } from "@/components/GlassCard"
 import { useTheme } from "@/components/ThemeProvider"
@@ -568,7 +568,18 @@ function NodePanel({
 
       <div className="post-body mt-4 text-sm" dangerouslySetInnerHTML={{ __html: node.html }} />
 
-      <div className="mt-4 flex flex-wrap gap-2 text-sm">
+      {/* A milestone that anchors a concept cluster links into its garden mindmap (the wikilink
+          graph Quartz renders for that topic). */}
+      {node.conceptMapUrl && (
+        <a
+          href={node.conceptMapUrl}
+          className="mt-4 flex items-center justify-center gap-1.5 rounded-lg border border-accent-2/50 bg-[var(--card-strong)] px-3 py-2 text-sm font-medium text-heading transition-colors hover:text-accent-2"
+        >
+          <Waypoints size={15} className="text-accent-2" /> Explore concept map →
+        </a>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2 text-sm">
         {node.resourceUrl && (
           <a
             href={node.resourceUrl}

@@ -22,6 +22,8 @@ export type RoadmapNode = {
   prerequisites: string[]
   /** The node's own garden page (always present — nodes are publish:true). */
   route: string
+  /** Garden URL of the milestone's concept cluster (hub/MOC), or "" if none/unpublished. */
+  conceptMapUrl: string
   /** Rendered note body (wikilinks already resolved). */
   html: string
 }

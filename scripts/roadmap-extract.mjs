@@ -131,6 +131,15 @@ async function main() {
     const group = d.part_of ? linkTarget(d.part_of) : null
     const html = String(await processor.process(resolveWikilinks(stripLeadingH1(n.body), index)))
 
+    // Optional pointer to the milestone's concept cluster (a garden hub/MOC note). Resolved via the
+    // published index so a milestone can link into its force-directed garden mindmap. A target that
+    // isn't published resolves to "" (the panel simply won't show the button) — never a dead link.
+    const conceptMapTarget = d.concept_map ? linkTarget(d.concept_map) : null
+    const conceptMapUrl = conceptMapTarget ? index.get(conceptMapTarget.toLowerCase()) ?? "" : ""
+    if (conceptMapTarget && !conceptMapUrl) {
+      warnings.push(`${n.basename}: concept_map "${conceptMapTarget}" is not a published note — button hidden`)
+    }
+
     nodes.push({
       id: n.basename,
       title: d.title ?? n.basename,
@@ -144,6 +153,7 @@ async function main() {
       prerequisites: prereqs,
       // The node's own garden page (it is publish:true, so this always resolves).
       route: `/garden/${n.route}`,
+      conceptMapUrl,
       html,
     })
   }
