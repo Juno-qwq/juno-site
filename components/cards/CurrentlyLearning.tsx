@@ -10,11 +10,14 @@ export function CurrentlyLearning() {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
+  // Show only the top few so this card matches the height of Recent Posts / Now Playing.
+  const tracks = learning.slice(0, 3)
+
   return (
     <GlassCard className="p-5">
       <h2 className="text-lg font-semibold text-heading">Currently Learning</h2>
       <div className="mt-4 flex flex-col gap-3">
-        {learning.map((t) => (
+        {tracks.map((t) => (
           <a key={t.label} href={t.garden} className="group block">
             <div className="flex items-center justify-between text-sm">
               <span className="text-text transition-colors group-hover:text-accent-2">{t.label}</span>
