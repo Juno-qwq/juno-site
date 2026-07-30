@@ -26,6 +26,7 @@ import rehypeSlug from "rehype-slug"
 import rehypeHighlight from "rehype-highlight"
 import rehypeStringify from "rehype-stringify"
 import rehypeCallouts from "./rehype-callouts.mjs"
+import rehypeCodeFigures from "./rehype-code-figures.mjs"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SITE = path.resolve(__dirname, "..")
@@ -38,6 +39,7 @@ const processor = unified()
   .use(remarkMath)
   .use(remarkRehype, { allowDangerousHtml: true }) // trusted content (my own vault), like the blog
   .use(rehypeRaw) // parse the raw transclusion <div>s
+  .use(rehypeCodeFigures) // mermaid/plotly fences → figure targets (before highlight)
   .use(rehypeCallouts)
   .use(rehypeKatex)
   .use(rehypeSlug)

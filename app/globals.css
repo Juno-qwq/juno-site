@@ -420,3 +420,26 @@
   padding: 0.7rem 0.85rem;
   pointer-events: none;
 }
+
+/* Mermaid + Plotly figures in garden notes. */
+.post-body pre.mermaid {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: center;
+  overflow-x: auto;
+}
+.post-body pre.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+.post-body .plotly-figure {
+  margin: 1.3em 0;
+}
+.post-body .plotly-figure script {
+  display: none;
+}
+.post-body .plotly-figure .plotly-target {
+  width: 100%;
+  min-height: 340px;
+}

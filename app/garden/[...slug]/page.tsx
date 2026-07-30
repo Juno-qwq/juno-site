@@ -8,6 +8,8 @@ import { GlassCard } from "@/components/GlassCard"
 import { GardenGraph, type GraphLink, type GraphNode } from "@/components/garden/GardenGraph"
 import { GardenSearch } from "@/components/garden/GardenSearch"
 import { GardenHoverPreviews } from "@/components/garden/GardenHoverPreviews"
+import { GardenMermaid } from "@/components/garden/GardenMermaid"
+import { GardenPlotly } from "@/components/garden/GardenPlotly"
 
 export function generateStaticParams(): { slug: string[] }[] {
   return getGardenNotes().map((n) => ({ slug: n.route.split("/") }))
@@ -51,6 +53,8 @@ export default async function GardenNotePage({ params }: { params: Promise<{ slu
   return (
     <main id="main-content" className="mx-auto max-w-6xl px-4 pb-16 pt-14 lg:px-6 lg:pt-6">
       <GardenHoverPreviews previews={previews} />
+      <GardenMermaid />
+      <GardenPlotly />
       <div className="grid gap-5 xl:grid-cols-[1fr_300px]">
         <GlassCard as="article" className="min-w-0 p-6 md:p-8">
           <nav className="flex flex-wrap items-center gap-1.5 text-xs text-text-muted" aria-label="Breadcrumb">
