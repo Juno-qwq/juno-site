@@ -5,7 +5,7 @@ import { getRoadmap } from "@/lib/roadmap"
 export const metadata: Metadata = {
   title: "Roadmap",
   description:
-    "Interactive learning roadmaps — a high-level prerequisite graph across Mathematics, Physics, Computer Science, Artificial Intelligence, Quantitative Finance, and Music Composition, with live progress.",
+    "Interactive learning roadmaps — a high-level prerequisite graph across Mathematics, Physics, Computer Science, Artificial Intelligence, Quantitative Finance, Music Composition, and Lifelong Reading, with live progress.",
   alternates: { canonical: "/roadmap/" },
 }
 
